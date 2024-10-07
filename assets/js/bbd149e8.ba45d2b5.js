@@ -1,0 +1,1 @@
+"use strict";(self.webpackChunkservable=self.webpackChunkservable||[]).push([[7879],{20328:e=>{e.exports=JSON.parse('{"label":"servable","permalink":"/blog/tags/servable","allTagsPath":"/blog/tags","count":1}')}}]);

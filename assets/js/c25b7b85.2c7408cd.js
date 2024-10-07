@@ -1,0 +1,1 @@
+"use strict";(self.webpackChunkservable=self.webpackChunkservable||[]).push([[4653],{82646:e=>{e.exports=JSON.parse('{"title":"Reference","slug":"/category/reference","permalink":"/docs/next/category/reference","navigation":{"previous":{"title":"Example","permalink":"/docs/next/tutorials/example"},"next":{"title":"Overview","permalink":"/docs/next/reference/overview"}}}')}}]);
