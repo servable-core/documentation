@@ -1,0 +1,1 @@
+"use strict";(self.webpackChunkservable=self.webpackChunkservable||[]).push([[7445],{1862:e=>{e.exports=JSON.parse('{"title":"Routes","slug":"/category/routes","permalink":"/docs/category/routes","navigation":{"previous":{"title":"Use a protocol","permalink":"/docs/guides/use"},"next":{"title":"Add a GET route","permalink":"/docs/guides/routes/add"}}}')}}]);

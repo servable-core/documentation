@@ -1,0 +1,1 @@
+"use strict";(self.webpackChunkservable=self.webpackChunkservable||[]).push([[1406],{80181:e=>{e.exports=JSON.parse('{"label":"parseserver","permalink":"/blog/tags/parseserver","allTagsPath":"/blog/tags","count":1}')}}]);
