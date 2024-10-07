@@ -1,0 +1,129 @@
+---
+sidebar_position: 1
+---
+
+import SVGComponent from '@site/src/components/generic/svg'
+import SVGPlus from '@site/src/components/generic/svgplus'
+
+# Add a GET route
+
+API stands for Application Programming Interface, meaning it's how to communicate with the system you are creating. A route within an API is a specific path to take to get specific information or data out of.
+
+```js
+export default ({
+    __servableType: 'route',
+    method: Servable.App.Route.Constants.Methods.GET,
+    path: '/engine/byname',
+    cache: {
+        type: Servable.App.Route.Constants.Cache.Type.InMemory,
+        params: {
+            window: 10
+        }
+    },    
+    rateLimiting: {
+        type: Servable.App.Route.Constants.RateLimiting.Type.FixedByIp,
+        params: {
+            limit: 10,
+            window: 100,
+            message: 'Too many requests'
+        }
+    },
+    schema: {
+        queryString: {
+            protocolId: { type: 'string' }
+        },
+        response: {
+            200: {
+                type: 'object',
+                properties: {
+                    index: { type: 'Object' }
+                }
+            }
+        }
+    },
+    specification: {
+        tags: [
+            "bridge"
+        ],
+        summary: "Get user by user name",
+        description: "",
+        operationId: "getUserByName",
+        parameters: [
+            {
+                "name": "username",
+                "in": "path",
+                "description": "The name that needs to be fetched. Use user1 for testing. ",
+                "required": true,
+                "schema": {
+                    "type": "string"
+                }
+            }
+        ],
+        responses: {
+            200: {
+                "description": "successful operation",
+                "content": {
+                    "application/json": {
+                        "schema": {
+                            "$ref": "#/components/schemas/User"
+                        }
+                    },
+                    "application/xml": {
+                        "schema": {
+                            "$ref": "#/components/schemas/User"
+                        }
+                    }
+                }
+            },
+            400: {
+                "description": "Invalid username supplied"
+            },
+            404: {
+                "description": "Engine not found"
+            }
+        }
+    },
+    request: {
+        type: 'application/json'
+    },
+    handler: async (request, response, next) => {
+        const { query } = request
+        // const { searchTerm, page = 0, pageSize = 10, sort = 'asc', } = query
+        const { bridgeId, } = query
+        let _query = new Servable.App.Query('Engine')
+        _query.equalTo('uniqueRef', bridgeId)
+        _query.select(['name', 'description', 'manifest', 'indexContent', 'documentation', 'owner'])
+        _query.include(['owner'])
+        let result = await _query.first({ useMasterKey: true })
+
+        if (!result) {
+            throw ({ message: "No adapter found", code: 204 })
+        }
+        const payload = {
+            protocolId: bridgeId,
+            id: result.id,
+            index: result.get('indexContent'),
+            documentation: result.get('documentation'),
+            manifest: result.get('manifest'),
+            user: {
+                lastname: result.get('owner').get('lastname'),
+                id: result.get('owner').id,
+                slug: result.get('owner').get('slugableValue'),
+                avatarUrl: result.get('owner').get('avatarUrl'),
+            },
+            interaction: {
+                comments: {
+                    count: 20,
+                },
+                likes: {
+                    count: 20,
+                }
+            }
+        }
+        return payload
+    }
+})
+```
+
+## References
+- [Protocol routes](../../reference/protocol/routes.md)

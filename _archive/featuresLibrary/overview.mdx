@@ -1,0 +1,23 @@
+---
+sidebar_position: 2
+---
+
+import SVGComponent from '@site/src/components/generic/svg'
+import SVGPlus from '@site/src/components/generic/svgplus'
+
+# Overview
+
+:::info
+Servable is still experimental and its api may change in the future.
+:::
+
+<div className={'bg-red-200 flex p-8'}>
+<SVGComponent 
+Svg={require('@site/static/img/swarm.svg').default} 
+className={`w-[200px]`} 
+role="img" />
+</div>
+
+<SVGPlus name={'main'} />
+
+Extend your server by using protoocols made by the community. Add emailing, versionning, or video capacity with one simple declaration. Handle schema migrations and rollbacks automatically.

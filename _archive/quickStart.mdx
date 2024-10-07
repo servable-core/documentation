@@ -1,0 +1,41 @@
+---
+sidebar_position: 0
+---
+
+import BashTabs from '@site/src/components/generic/bashTabs'
+// import Flow from '@site/src/components/generic/flow'
+
+# Quick Start 🚀
+
+1. Install the Servable CLI
+<BashTabs npm={`npm install -g @servable/cli  \nservable app new -q \nnpm run start`} />
+
+2. Create a new Servable service using the @servable/parse-server-engine
+<BashTabs npm={`servable app new -q`} />
+The Servable service has a dedicated system docker-compose for local development that will start a mongodb database, a Parse Server dashboard, a Redis cache database and a Redis Live Query server.
+
+2. Start the server
+<BashTabs npm={`npm run start`} />
+
+{/* 
+<Flow 
+initialEdges={[
+    { id: 'e1-2', source: '1', 
+    target: '2', 
+    markerEnd: {type: 'arrowclosed'} },
+    { id: 'e1-3', source: '1', target: '3' }
+    ]}
+initialNodes={[
+    { id: '1', 
+    
+    position: { x: 0, y: 0 }, 
+    data: { label: (
+        <>
+          Servable <strong>App</strong>
+          <br />
+          <i>Entry point</i>
+        </>
+      ) } },
+    { id: '2', position: { x: 0, y: 100 }, data: { label: 'Protocols' } },
+    { id: '3', position: { x: 160, y: 100 }, data: { label: 'commentable' } }
+]}/> */}

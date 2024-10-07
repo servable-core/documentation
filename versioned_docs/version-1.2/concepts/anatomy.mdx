@@ -1,0 +1,87 @@
+---
+sidebar_position: 4
+---
+
+import SVGComponent from '@site/src/components/generic/svg'
+
+# Anatomy of a Servable service
+
+## Project structure
+```bash
+├── index.js
+├── app
+├── ├── ...
+├── protocols
+├── ├── ...
+├── servable.config.js
+├── .env
+└── package.json
+```
+
+- The servable config is servable.config.js
+- The servable app entry point is index.js
+- The app protocol is in /app
+- The local protocols are in /protocols
+
+
+# Anatomy of a protocol
+
+Any protocol respects the following root folder structure:
+
+```bash
+┌── main.js
+├── target
+├──── class
+├──── triggers
+├── schema
+├── config
+├── models
+├── jobs
+├── seed
+├── services
+├── lib
+├── assets
+├── docs
+├── livemodels.js
+└── main.json
+```
+
+
+## System design of a full-fledged local servable app
+A fully functional servable deployment will use a few other components to run alongside a main servable app.
+These components are installed and run automatically when using the quick start CLI command.
+They are defined in the app protocol system's docker-compose file.
+
+
+### Servable service
+The actual servable app
+*Mandatory*
+
+### Servable dashboard
+Servable Dashboard is a standalone dashboard for managing Servable services.
+- Create, edit and delete schema (not available with Servable)
+- Create, edit and delete security rules (not available with Servable)
+- Create, edit and delete data
+
+[Github](https://github.com/parse-community/parse-dashboard)
+*Optional*
+
+### App database
+The mongodb or PostGreSQL database
+*Mandatory*
+
+### Minio
+*Mandatory*
+An S3 like bucket server for storing files
+
+
+### Utils database
+An utilitary database used by the arbiter to store migration status and current instances
+*Mandatory*
+
+### Redis cache 
+Optional
+
+### Live Query Server
+Optional
+

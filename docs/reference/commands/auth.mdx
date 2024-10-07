@@ -1,0 +1,69 @@
+---
+sidebar_position: 1
+---
+
+import BashTabs from '@site/src/components/generic/bashTabs'
+
+# $ servable auth
+
+## Status
+Checks authentication status with Servable server.
+```bash
+servable auth status
+```
+
+### Options
+N/A
+
+### Example
+```bash
+servable auth status
+```
+
+### Help
+N/A
+
+## Login
+Log into Servable server.
+```bash
+servable auth login
+```
+
+### Options
+```bash
+      --registryUsername      Username                                                                            [string]
+  -u, --registryPassword      Password                                                                            [string]
+      --registrySessionToken                                                              [number] [default: 1387]  
+```
+
+### Example
+```bash
+servable auth login --registryUsername myemail@gmail.com --registryPassword XXXX-XXXX
+```
+
+### Help
+```bash
+servable auth login -h
+```
+
+
+## Logout
+Logout of Servable server.
+```bash
+servable auth logout
+```
+
+### Options
+```bash
+    --registryConfirmLogout  Logout of Servable                                                           [number] [default: 1387]  
+```
+
+### Example
+```bash
+servable auth logout
+```
+
+### Help
+```bash
+servable auth logout -h
+```

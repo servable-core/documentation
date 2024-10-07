@@ -1,0 +1,44 @@
+---
+sidebar_position: 2
+---
+import SVGPlus from '@site/src/components/generic/svgplus'
+import SVGComponent from '@site/src/components/generic/svg'
+import Manifest from '@site/src/components/project/manifest/actual'
+import Definitions from '@site/src/components/project/definitions/actual'
+
+
+# Terms, definitions and components
+
+<Definitions noLink align={'left'}/>
+<br/>
+<Manifest noLink align={'left'}/>
+
+
+<SVGPlus name={'orchestration'} 
+light={require('@site/static/diagrams/light/main.svg').default} 
+dark={require('@site/static/diagrams/dark/main.svg').default} 
+/>
+
+### Servable server
+The Servable server acts as a central orchestrator and mediator. It computes the target schema, calls for a database migration if needed, loads protocols, registers seeding, configuration, routes, jobs, etc.
+
+### Protocols
+Servable streamlines the server development by separating every "groupable" logic to be a protocol, so that it is organically extracted from the base code and possibly migrated into its own package. By doing so, Servable enforces a clear separation of concerns pattern out of the box. 
+[More](./protocols)
+
+Just like a docker image is made to be platform agnostic, a protocol is designed to be as independent as possible from the current environment it's being used in. A protocol might depend on other protocols, but it does not need to know which application it is used for, or call any of its API, unless they are registered as a **Service**
+
+### Framework engine
+The framework engine is a bridge to a more traditional Node JS framework. It conforms to Servable's [engine APIs](./engines). By separating the actual implementation from the high level object manipulation, the Servable framework allows for a high reusability of your server and protocols code from the get-go.
+[More](./engines)
+
+
+
+## Model-protocol relationship
+<SVGPlus name={'orchestration'} 
+light={require('@site/static/diagrams/light/architecure_protocols_models.svg').default} 
+dark={require('@site/static/diagrams/dark/architecure_protocols_models.svg').default} 
+/>
+<div className={'text-center border-t border-t-stone-600 py-3'}>
+    <small><i>A view of a Servable model-protocol relationship tree</i></small>
+</div>

@@ -1,0 +1,59 @@
+---
+sidebar_position: 7
+---
+
+import BashTabs from '@site/src/components/generic/bashTabs'
+import ProtocolWidget from '@site/src/components/domain/widgets/protocol.js'
+
+# Packages
+
+## [Servable Server](https://github.com/servable-community/servable-engine)
+
+The servable server is responsible for all the Servable related operations on a servable template project.
+It is available as an npm dependency.
+
+<BashTabs npm={`npm install -g @servable/server`} />
+
+## [Servable Manifest](https://github.com/servable-community/servable-manifest)
+
+The Servable manifest is a utility that builds a protocol's manifest and documents it.
+It is available as an npm dependency.
+
+<BashTabs npm={`npm install -g @servable/tools`} />
+
+## [Servable Parse Server Adapter](https://github.com/servable-community/parse-server-engine)
+
+The Servable Parse Server Adapter is an example of a engine.
+<BashTabs npm={`npm install @servable/parse-server-engine`} />
+
+## [Servable CLI (yeoman generator)](https://github.com/servable-community/generator-servable)
+
+The servable CLI is responsible for scaffolding and manipulating servable and protocol projects.
+
+It is available as an npm package. It uses under the hood:
+- the Servable server 
+- the Servable Protocols Registry API
+
+<BashTabs npm={`npm install -g @servable/cli`} />
+
+
+## [Servable Registry](https://servable.app)
+
+The servable protocols registry is a centralized  protocols repository.
+
+It is available at servable.app
+
+It serves a public api at api.servable.app
+
+## Servable Dashboard
+
+The servable dashboard is a fork of the Parse Dashboard aimed at providing the best Servable experience.
+
+It is available with the CLI when launching a full-fledged local app.
+
+## Servable Widgets
+
+Servable widgets are embeddable React components that can display a protocol for example.
+
+<ProtocolWidget id={'@servable-community/framable'} />
+<ProtocolWidget id={'@servable-community/framable'} size={'m'}/>

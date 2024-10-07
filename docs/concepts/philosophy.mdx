@@ -1,0 +1,90 @@
+---
+sidebar_position: 0
+---
+
+# Philosophy
+
+![logo](/img/icon.svg)
+
+
+## Motivation - Why another framework?
+We created the protocols in our Node JS + Parse server project. 
+What was an experience to ease the backend development quickly became a good practice that helped us keep a clean codebase. 
+They worked so well we decided to streamline their integration with the code base for future projects. 
+We were inspired by the powerful ways NextJs improved the React experience by providing an efficient template on top of it. 
+Yet we did not want to hide the Parse Server framework behind ours as we truly love Parse. 
+Servable allows to tap into all the existing and upcoming Parse protocols and yet it dramatically simplifies the development process. 
+A well designed Servable project will comprise almost nothing more than the actual models and business logic of the platform, 
+other repetitive functions and logics will use existing protocols implemented by the community or entreprise-private protocols.
+
+## Principles
+### Convention over configuration
+<i>Convention over configuration (also known as coding by convention) is a software design paradigm used by software frameworks that attempts to decrease the number of decisions that a developer using the framework is required to make without necessarily losing flexibility and don't repeat yourself (DRY) principles.</i>
+
+<br />
+<a href='https://en.wikipedia.org/wiki/Convention_over_configuration'>
+Wikipedia
+</a>
+
+
+### Don't repeat yourself (DRY)
+<i>"Don't repeat yourself" (DRY) is a principle of software development aimed at reducing repetition of information which is likely to change, replacing it with abstractions that are less likely to change, or using data normalization which avoids redundancy in the first place.</i>
+<br />
+<a href='https://en.wikipedia.org/wiki/Don%27t_repeat_yourself'>
+Wikipedia
+</a>
+
+
+### Protocol first 
+When refactoring code we can either group our files by the technical function they provide or the protocol they provide the end user.
+Servable chooses to emphasize on protocols the most as it yields substantial benefits for the teams and the orgranization as a whole. 
+<a href='https://gist.github.com/arnausd23/137bab46215d69023729a1b30fb3ec9b'>
+Read more
+</a>
+
+### Extreme refactoring
+<i>Refactor mercilessly</i>
+<br/>
+Servable takes refactoring to the extreme by decluttering the app from the underlying protocols that different models use into a single package called protocol.
+Contrarily to a middleware or an extension, a protocol is a high level, conventioned, predicatable and versioned piece of code that provides a functional protocol. 
+Extreme refactoring with protocols yield extreme reusability from the ground-up by instilling a protocol driven culture in your teams.
+<br/>
+<i>Variable → Function → Class → Module → Extension → <b>Protocol</b></i>
+<br/>
+<a href='http://www.extremeprogramming.org/rules/refactor.html'>
+Extreme refactoring
+</a>
+
+### Functional programming
+(over object programming)
+<i>Functional programming is a paradigm of building computer programs using expressions and functions without mutating state and data.
+By respecting these restrictions, functional programming aims to write code that is clearer to understand and more bug resistant.</i>
+
+### Liskov substitution principle
+<i>Let q(x) be a property provable about objects of x of type T. Then q(y) should be provable for objects y of type S where S is a subtype of T.</i>
+
+
+
+
+
+### Other influences
+- <a href='https://blog.ploeh.dk/2021/06/14/new-book-code-that-fits-in-your-head/'><i>Code That Fits in Your Head</i></a> book by Mark Seemann
+- JAVA Spring Boot
+- Express JS
+- Fastify JS
+- Microservices
+- Parse Server
+- Domain Driven Design
+
+
+
+## Should you use Servable?
+Servable is likely a good fit for you if
+- You want to group the development of your server by capacity
+- You want to reuse a capacity (protocol) over different models without copying it over and over
+- You want to make that capacity available throughout your organization or publish it on the web
+- You are building a new platform from scratch but you don't want reinvent the wheel for the usual suspects: social interactions, versionning, data consistency over deletion 
+
+
+![logo](/art/buret.png)
+<small>Simon Buret, The blessings, 2022</small>

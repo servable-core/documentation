@@ -1,0 +1,34 @@
+---
+sidebar_position: 2
+---
+
+# $ servable app
+
+## Create a new app
+Creates a new servable app and installs dependencies.
+```bash
+servable app new
+```
+
+### Options
+```bash
+  -n, --appName              App name                                                      [string] [default: "MyAppName"]
+      --appDescription       App description                                          [string] [default: "A Servable service"]
+      --bridgeframeworkId    Engine to use                  [string] [default: "@servable/parse-server-engine"]
+  -i, --installDependencies  Install dependencies                                                [boolean] [default: true]
+  -l, --license              License                                                             [string] [default: "MIT"]
+  -p, --packageManager       Package manager ('npm', 'yarn' or 'pnpm')                           [string] [default: "npm"]
+  -g, --gitInit              Initialize a git repository                                         [boolean] [default: true]
+  -d, --destination          Choose a destination                                                                 [string]
+      --appPort              App port                                                             [number] [default: 1387]  
+```
+
+### Example
+```bash
+servable app new --appName='MyApp' --adapter='@servable/cli'
+```
+
+### Help
+```bash
+servable app -h
+```
