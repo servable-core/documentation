@@ -7,19 +7,22 @@ const darkCodeTheme = require('prism-react-renderer/themes/dracula')
 // const lightCodeTheme = require('prism-react-renderer').themes.github
 // const darkCodeTheme = require('prism-react-renderer').themes.dracula
 
-const organizationName = "servablecommunity"
-const projectName = "servable"
+
 require('dotenv').config()
 
 /** @type {import('@docusaurus/types').Config} */
 const config = {
   title: 'Servable',
   tagline: 'A protocol oriented Node JS framework',
-  url: 'https://docs.servable.app',
-  baseUrl: '/',
+  url: 'https://servable-core.github.io',
+  baseUrl: '/documentation',
   onBrokenLinks: 'throw',
   onBrokenMarkdownLinks: 'warn',
-  favicon: 'img/favicon.ico', //https://icons8.com/icon/set/animals/plasticine
+  favicon: 'img/favicon.ico', //https://icons8.com/icon/set/animals/plasticine 
+  // GitHub pages deployment config.
+  // If you aren't using GitHub pages, you don't need these.
+  organizationName: "servable-core", // Usually your GitHub org/user name.
+  projectName: "documentation", // Usually your repo name.
   plugins: [
     require.resolve("@cmfcmf/docusaurus-search-local"),
     ['drawio', {}],
@@ -78,8 +81,7 @@ const config = {
   ],
   // GitHub pages deployment config.
   // If you aren't using GitHub pages, you don't need these.
-  organizationName, // Usually your GitHub org/user name.
-  projectName, // Usually your repo name.
+
 
   // Even if you don't use internalization, you can use this field to set useful
   // metadata like html lang. For example, if your site is Chinese, you may want
