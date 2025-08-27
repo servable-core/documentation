@@ -1,1 +1,0 @@
-"use strict";(self.webpackChunkservable=self.webpackChunkservable||[]).push([[2427],{50268:e=>{e.exports=JSON.parse('{"title":"CLI \ud83e\udd16","slug":"/category/cli-","permalink":"/docs/category/cli-","navigation":{"previous":{"title":"Query","permalink":"/docs/reference/engine/query"},"next":{"title":"Installation","permalink":"/docs/reference/commands/install"}}}')}}]);
