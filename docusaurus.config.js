@@ -13,7 +13,7 @@ require('dotenv').config()
 
 /** @type {import('@docusaurus/types').Config} */
 const config = {
-  title: 'Peakub help',
+  title: 'Peakub',
   tagline: 'A protocol oriented Node JS framework',
   url: 'https://help.peakub.com',
   baseUrl: '/',
