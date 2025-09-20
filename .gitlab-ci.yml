@@ -1,7 +1,7 @@
 # https://docs.gitlab.com/ee/ci/yaml/
 
 variables:
-  IMAGE_NAME: peakub/web/help
+  IMAGE_NAME: servable/documentation
   IMAGE_TAG: latest
   DOCKER_HOST: tcp://docker:2376
   DOCKER_TLS_CERTDIR: "/certs"

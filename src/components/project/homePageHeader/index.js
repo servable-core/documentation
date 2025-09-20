@@ -1,9 +1,8 @@
+import React from 'react'
 import useDocusaurusContext from '@docusaurus/useDocusaurusContext'
 import Link from '@docusaurus/Link'
 // import LogoAnimated from '../logo/animated'
 import LogoStatic from '../logo/static/index.svg'
-import React from 'react'
-React
 
 export default () => {
   const { siteConfig } = useDocusaurusContext()
@@ -36,7 +35,7 @@ export default () => {
           max-w-md
         `}>
           <h1 className='md:text-7xl text-6xl font-bold text-[#e76f51]'>            
-            {`${siteConfig.title}`} <i className='text-gray-600 dark:text-gray-400'> help</i>
+            {`${siteConfig.title}`} <i className='text-gray-600 dark:text-gray-400'> framework</i>
           </h1>
           <p className={`text-lg `}>
             A <b>protocol driven</b> Node JS framework with different <b>Servable engines</b>. 
