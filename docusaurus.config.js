@@ -6,23 +6,24 @@ const darkCodeTheme = require('prism-react-renderer/themes/dracula')
 
 // const lightCodeTheme = require('prism-react-renderer').themes.github
 // const darkCodeTheme = require('prism-react-renderer').themes.dracula
-
+const organizationName = "servablecommunity"
+const projectName = "servable"
 
 require('dotenv').config()
 
 /** @type {import('@docusaurus/types').Config} */
 const config = {
-  title: 'Servable',
+  title: 'Peakub help',
   tagline: 'A protocol oriented Node JS framework',
-  url: 'https://servable-core.github.io',
-  baseUrl: '/documentation',
+  url: 'https://help.peakub.com',
+  baseUrl: '/',
   onBrokenLinks: 'throw',
   onBrokenMarkdownLinks: 'warn',
   favicon: 'img/favicon.ico', //https://icons8.com/icon/set/animals/plasticine 
   // GitHub pages deployment config.
   // If you aren't using GitHub pages, you don't need these.
-  organizationName: "servable-core", // Usually your GitHub org/user name.
-  projectName: "documentation", // Usually your repo name.
+  organizationName: "peakub", // Usually your GitHub org/user name.
+  projectName: "help", // Usually your repo name.
   plugins: [
     require.resolve("@cmfcmf/docusaurus-search-local"),
     ['drawio', {}],
