@@ -1,0 +1,3793 @@
+# Servable
+
+> A protocol oriented Node JS framework
+
+This file contains all documentation content in a single document following the llmstxt.org standard.
+
+## Code of conduct
+
+![logo](/img/icon.svg)
+
+Contributor Covenant Code of Conduct
+
+### Our Pledge
+
+In the interest of fostering an open and welcoming environment, we as
+contributors and maintainers pledge to making participation in our project and
+our community a harassment-free experience for everyone, regardless of age, body
+size, disability, ethnicity, sex characteristics, gender identity and expression,
+level of experience, education, socio-economic status, nationality, personal
+appearance, race, religion, or sexual identity and orientation.
+
+### Our Standards
+
+Examples of behavior that contributes to creating a positive environment
+include:
+
+* Using welcoming language
+* Being respectful of differing viewpoints and experiences
+* Gracefully accepting constructive criticism
+* Focusing on what is best for the community
+* Showing empathy towards other community members
+
+Examples of unacceptable behavior by participants include:
+
+* The use of sexualized language or imagery and unwelcome sexual attention or
+ advances
+* Trolling, insulting/derogatory comments, and personal or political attacks
+* Public or private harassment
+* Publishing others' private information, such as a physical or electronic
+ address, without explicit permission
+* Other conduct which could reasonably be considered inappropriate in a
+ professional setting
+
+### Our Responsibilities
+
+Project maintainers are responsible for clarifying the standards of acceptable
+behavior and are expected to take appropriate and fair corrective action in
+response to any instances of unacceptable behavior.
+
+Project maintainers have the right and responsibility to remove, edit, or
+reject comments, commits, code, wiki edits, issues, and other contributions
+that are not aligned to this Code of Conduct, or to ban temporarily or
+permanently any contributor for other behaviors that they deem inappropriate,
+threatening, offensive, or harmful.
+
+### Scope
+
+This Code of Conduct applies both within project spaces and in public spaces
+when an individual is representing the project or its community. Examples of
+representing a project or community include using an official project e-mail
+address, posting via an official social media account, or acting as an appointed
+representative at an online or offline event. Representation of a project may be
+further defined and clarified by project maintainers.
+
+### Enforcement
+
+Instances of abusive, harassing, or otherwise unacceptable behavior may be
+reported by contacting the project team [here](https://servable.app/contact). All
+complaints will be reviewed and investigated and will result in a response that
+is deemed necessary and appropriate to the circumstances. The project team is
+obligated to maintain confidentiality with regard to the reporter of an incident.
+Further details of specific enforcement policies may be posted separately.
+
+Project maintainers who do not follow or enforce the Code of Conduct in good
+faith may face temporary or permanent repercussions as determined by other
+members of the project's leadership.
+
+### Attribution
+
+This Code of Conduct is adapted from the [Contributor Covenant][homepage], version 1.4,
+available at https://www.contributor-covenant.org/version/1/4/code-of-conduct.html
+
+[homepage]: https://www.contributor-covenant.org
+
+For answers to common questions about this code of conduct, see
+https://www.contributor-covenant.org/faq
+
+---
+
+## Anatomy of a Servable service
+
+import SVGComponent from '@site/src/components/generic/svg'
+
+
+
+### Project structure
+```bash
+├── index.js
+├── app
+├── ├── ...
+├── protocols
+├── ├── ...
+├── servable.config.js
+├── .env
+└── package.json
+```
+
+- The servable config is servable.config.js
+- The servable app entry point is index.js
+- The app protocol is in /app
+- The local protocols are in /protocols
+
+## Anatomy of a protocol
+
+Any protocol respects the following root folder structure:
+
+```bash
+┌── main.js
+├── target
+├──── class
+├──── triggers
+├── schema
+├── config
+├── models
+├── jobs
+├── seed
+├── services
+├── lib
+├── assets
+├── docs
+├── livemodels.js
+└── main.json
+```
+
+### System design of a full-fledged local servable app
+A fully functional servable deployment will use a few other components to run alongside a main servable app.
+These components are installed and run automatically when using the quick start CLI command.
+They are defined in the app protocol system's docker-compose file.
+
+#### Servable service
+The actual servable app
+*Mandatory*
+
+#### Servable dashboard
+Servable Dashboard is a standalone dashboard for managing Servable services.
+- Create, edit and delete schema (not available with Servable)
+- Create, edit and delete security rules (not available with Servable)
+- Create, edit and delete data
+
+[Github](https://github.com/parse-community/parse-dashboard)
+*Optional*
+
+#### App database
+The mongodb or PostGreSQL database
+*Mandatory*
+
+#### Minio
+*Mandatory*
+An S3 like bucket server for storing files
+
+#### Utils database
+An utilitary database used by the arbiter to store migration status and current instances
+*Mandatory*
+
+#### Redis cache 
+Optional
+
+#### Live Query Server
+Optional
+
+---
+
+## Terms, definitions and components
+
+import SVGPlus from '@site/src/components/generic/svgplus'
+import SVGComponent from '@site/src/components/generic/svg'
+import Manifest from '@site/src/components/project/manifest/actual'
+import Definitions from '@site/src/components/project/definitions/actual'
+
+
+
+#### Servable server
+The Servable server acts as a central orchestrator and mediator. It computes the target schema, calls for a database migration if needed, loads protocols, registers seeding, configuration, routes, jobs, etc.
+
+#### Protocols
+Servable streamlines the server development by separating every "groupable" logic to be a protocol, so that it is organically extracted from the base code and possibly migrated into its own package. By doing so, Servable enforces a clear separation of concerns pattern out of the box. 
+[More](./protocols)
+
+Just like a docker image is made to be platform agnostic, a protocol is designed to be as independent as possible from the current environment it's being used in. A protocol might depend on other protocols, but it does not need to know which application it is used for, or call any of its API, unless they are registered as a **Service**
+
+#### Framework engine
+The framework engine is a bridge to a more traditional Node JS framework. It conforms to Servable's [engine APIs](./engines). By separating the actual implementation from the high level object manipulation, the Servable framework allows for a high reusability of your server and protocols code from the get-go.
+[More](./engines)
+
+### Model-protocol relationship
+
+    <small>A view of a Servable model-protocol relationship tree</small>
+
+---
+
+## What does an engine do?
+
+An engine is the runtime bridge between Servable and your underlying framework stack.
+
+Servable orchestrates protocols, schema composition, lifecycle phases, and wiring. The engine executes concrete framework behavior such as HTTP routing, object persistence, auth sessions, and background jobs.
+
+### Why engines exist
+
+Servable is protocol-oriented and engine-agnostic by design. This lets you build capabilities as protocols while keeping runtime implementation behind a clear API contract.
+
+In practice:
+
+- Servable decides what should happen.
+- The engine decides how it happens in the selected framework.
+
+### Common engine API domains
+
+Engines usually provide implementations for:
+
+- Object operations (create, update, delete, hooks).
+- Query operations.
+- Auth/session behavior.
+- Route and function registration.
+- Jobs and scheduling.
+- Files and storage-related adapters.
+
+Protocols can use these API families to expose reusable behavior.
+
+### Example: Parse Server engine
+
+With the Parse Server engine, Servable delegates framework-specific operations to Parse + Express adapters while keeping protocol declaration and orchestration in Servable.
+
+This is why most app-level customization remains in model/protocol declarations, not in low-level framework boot code.
+
+### Choosing an engine
+
+When choosing an engine for your app:
+
+1. Confirm it supports the API domains required by your protocols.
+2. Confirm runtime requirements (Node version, infrastructure, database compatibility).
+3. Test protocol behavior end-to-end in a staging environment.
+
+If a protocol needs an API your engine does not implement, that protocol will not behave correctly even if startup succeeds.
+
+### Related pages
+
+- [Concepts philosophy](./philosophy)
+- [Guides overview](../guides/overview)
+- [Reference engine docs](../reference/engine/object)
+
+---
+
+## How Servable server orchestrates a service?
+
+### Schema
+
+Servable takes the separation of concerns to the extreme by allowing every protocol to define a schema it needs to run. This schema has two main entries:
+- target: how does the protocol change the targetted model's schema, ie, which field to add
+- managed: the models the protocol needs to run
+
+#### Final schema
+At runtime the Servable server computes the total schema for the whole app based on the multiple protocols that are called.
+
+### Lifecycle
+
+When the server is launched, the servable-engine performs the following tasks:
+
+- Launches an Express app
+- Computes the target database schema by aggregating the custom app tables and the protocols applied to those tables
+- Checks if a schema migration is necessary. It migrates the schema or not accordingly
+- Binds every protocol to the events triggered by the tables that use them
+- Exposes every protocol custom function
+- Registers jobs
+
+```mermaid
+%%{
+  init: {
+    'theme': 'base',
+    'themeVariables': {
+      'primaryColor': '#fff',
+      'primaryTextColor': '#323232',
+      'primaryBorderColor': '#323232',
+      'lineColor': '#323232',
+      'fontFamily': 'Space Grotesk',
+      'fontSize': '14px'
+    }
+  }
+}%%
+graph TD
+    A(Start) --> buildSchema(Compute schema)
+    buildSchema --> launchExpressApp(Launch Express App)
+    launchExpressApp --> beforeInit(Before init)
+    beforeInit --> registerModels(Register models)
+    registerModels --> wireSchema(Wire schema)    
+    wireSchema --> seed(Seed)        
+    seed --> config(Setup config)
+    config --> afterInit(After init)
+    afterInit --> B(App launched)
+```
+
+---
+
+## Philosophy
+
+![logo](/img/icon.svg)
+
+### Motivation - Why another framework?
+We created the protocols in our Node JS + Parse server project. 
+What was an experience to ease the backend development quickly became a good practice that helped us keep a clean codebase. 
+They worked so well we decided to streamline their integration with the code base for future projects. 
+We were inspired by the powerful ways NextJs improved the React experience by providing an efficient template on top of it. 
+Yet we did not want to hide the Parse Server framework behind ours as we truly love Parse. 
+Servable allows to tap into all the existing and upcoming Parse protocols and yet it dramatically simplifies the development process. 
+A well designed Servable project will comprise almost nothing more than the actual models and business logic of the platform, 
+other repetitive functions and logics will use existing protocols implemented by the community or entreprise-private protocols.
+
+### Principles
+#### Convention over configuration
+Convention over configuration (also known as coding by convention) is a software design paradigm used by software frameworks that attempts to decrease the number of decisions that a developer using the framework is required to make without necessarily losing flexibility and don't repeat yourself (DRY) principles.
+
+Wikipedia
+
+#### Don't repeat yourself (DRY)
+"Don't repeat yourself" (DRY) is a principle of software development aimed at reducing repetition of information which is likely to change, replacing it with abstractions that are less likely to change, or using data normalization which avoids redundancy in the first place.
+
+Wikipedia
+
+#### Protocol first 
+When refactoring code we can either group our files by the technical function they provide or the protocol they provide the end user.
+Servable chooses to emphasize on protocols the most as it yields substantial benefits for the teams and the orgranization as a whole. 
+
+Read more
+
+#### Extreme refactoring
+Refactor mercilessly
+
+Servable takes refactoring to the extreme by decluttering the app from the underlying protocols that different models use into a single package called protocol.
+Contrarily to a middleware or an extension, a protocol is a high level, conventioned, predicatable and versioned piece of code that provides a functional protocol. 
+Extreme refactoring with protocols yield extreme reusability from the ground-up by instilling a protocol driven culture in your teams.
+
+Variable → Function → Class → Module → Extension → Protocol
+
+Extreme refactoring
+
+#### Functional programming
+(over object programming)
+Functional programming is a paradigm of building computer programs using expressions and functions without mutating state and data.
+By respecting these restrictions, functional programming aims to write code that is clearer to understand and more bug resistant.
+
+#### Liskov substitution principle
+Let q(x) be a property provable about objects of x of type T. Then q(y) should be provable for objects y of type S where S is a subtype of T.
+
+#### Other influences
+- Code That Fits in Your Head book by Mark Seemann
+- JAVA Spring Boot
+- Express JS
+- Fastify JS
+- Microservices
+- Parse Server
+- Domain Driven Design
+
+### Should you use Servable?
+Servable is likely a good fit for you if
+- You want to group the development of your server by capacity
+- You want to reuse a capacity (protocol) over different models without copying it over and over
+- You want to make that capacity available throughout your organization or publish it on the web
+- You are building a new platform from scratch but you don't want reinvent the wheel for the usual suspects: social interactions, versionning, data consistency over deletion
+
+---
+
+## What is a protocol?
+
+import ProtocolWidget from '@site/src/components/domain/widgets/protocol.js'
+import SVGPlus from '@site/src/components/generic/svgplus'
+
+
+
+***An object oriented programming perspective*** 
+In many object oriented programming language a protocol describes what an unknown type of object can do. The same way a Servable protocol describes what an unknown database object can do. 
+
+A protocol always applies to a class, which is the Servable representation of a database table.
+
+By applying a protocol to a class we make it conform to the the protocol's schema, meaning the class' schema will be updated to include the extra fields the protocol needs to work. Even more, the protocol listens to all the events (triggers) sent to the class (beforeSave, afterSave, beforeDelete, afterDelete, ...) so that the class' behavior conforms to the protocol's behavior. The protocol does not cancel the class' own desired behavior, it gets executed in a chain alongside all the class' protocols triggers.
+
+A class can have multiple protocols.
+Every class can customize the way it uses a protocol to an extent (protocol parameters).
+The same way a protocol can be applied to multiple models.
+
+A protocol has no knowledge of the class it's being applied to. It simply manipulates it according to the declared fields and parameters.
+
+### A better way to group repeatable logic on a database object
+Let's say you have an e-commerce application that enables user comments on a blog page and on a product page. You would probably create a table in your database that holds the comments, with a foreign key to the user who made the comment. For performance reasons you would keep the comments count on the object that is being commented, alongside a reference to a "relevant" comment. You would add those fields to both the blog page table and the product page. Every change you would make the comments system design would have to be manually updated to those two tables.
+
+We can do much better by creating a protocol called *commentable* that will be responsible for:
+
+- Defining the schema and creating the tables needed for the comment protocol, ie CommentableEntry
+- Adding the proper fields to every object that is *commentable*, we call them projected field, in this case they are named CommentableRelevantEntry, CommentableCount
+- The security and ACL for the CommentableEntry table and the fields 
+- For defining object level logic to its own object models
+- For reacting to object events, for example beforeSave, afterSave, beforeDelete, afterDelete and make sure the object is at all time coherent with the protocol rules
+
+By doing so we have packaged the ability to comment into one component that can be reused easily across the project.
+
+A protocol does not stop at the server. Some protocols have a client counterpart that acts in tandem with the server. If we consider the Commentable protocol, it can be distributed in a commentable-server npm package, alongside a commentable-react package that contains React components that can be called on any object that conforms to the protocol. The components include, for a commentable object:
+- **CommentableList** that displays a paginated list of comments 
+- **CommentableComment** that displays a paginated list of comments
+- **CommentableCommentsCount** that displays the total number of comments 
+- **CommentableCommentsExcerpt** that displays an excerpt
+
+By making an object Commentable, you're adding not only database fields and server methods to it, you are also taking advantage of a front library made for its capacity.
+
+    
+
+{/* 
+### Lifecycle
+```mermaid
+%%{
+  init: {
+    'theme': 'base',
+    'themeVariables': {
+      'primaryColor': '#fff',
+      'primaryTextColor': '#323232',
+      'primaryBorderColor': '#323232',
+      'lineColor': '#323232',
+      'fontFamily': 'Space Grotesk'       
+    }
+  }
+}%%
+stateDiagram
+    [*] --> beforeInit
+    beforeInit --> seed
+    seed --> afterInit
+    afterInit --> [*]
+``` */}
+
+---
+
+## Contribution guide
+
+![logo](/img/icon.svg)
+
+ Contributing to Servable
+
+:+1::tada: **THANK YOU** for taking the time to contribute! :tada::+1:
+
+The following is a set of guidelines for contributing to Servable and all projects in the [servable organization](https://github.com/servable) on GitHub. Although these are strongly encouraged guidelines, nothing about this project is set in stone, if you believe something here should be edited, open a pull request to start a discussion about it.
+
+### Code of Conduct
+
+This project and everyone participating in it is governed by the [Servable Code of Conduct](codeofconduct). By participating, you are expected to uphold this code. Please report unacceptable behavior to the contact method in the [Code of Conduct](codeofconduct).
+
+### What should I know before I get started?
+
+#### Documentation
+
+All of the documentation for the project is housed within the `docs/docs` folder. The general website is housed within the `docs` folder. It is important while contributing to Servable to ensure that the documentation is complete, up to date, and helpful.
+
+#### Resources
+
+It is highly encouraged to read through the following resources before contributing.
+
+- [Website](https://servable.app)
+
+### How Can I Contribute?
+
+#### Reporting Bugs
+
+When reporting bugs please fill out the issue template with as much detail as possible. If you do not fill out the issue template with enough detail for us to debug your issue, your issue is at risk for being closed.
+
+##### Minimal, Complete and Verifiable Example (MCVE)
+
+One of the most important things when submitting an issue is to provide a *Minimal, Complete and Verifiable Example* (or MCVE for short). If you are reporting a bug it is important for us to be able to test and debug your code as quickly as possible.
+
+- *Minimal* – Use as little code as possible that still produces the same problem
+- *Complete* – Provide all parts needed to reproduce your problem
+- *Reproducible* – Test the code to make sure it reproduces the problem
+
+Without following these steps when creating code examples it is nearly impossible for us to debug your issue. Help us by putting time and care into code examples so that we also can help you. Not following this guideline puts your issue at risk of being closed.
+
+#### Submitting a Pull Request (PR)
+
+It is highly recommended (although not required) to follow the pattern below before submitting a pull request. Not every step below will be relevant to all pull requests.
+
+##### Before
+
+1. **Identify a need in the project** - This can be a bug, protocol request, or other change.
+2. **Create a detailed issue to gauge interest** - Although most pull requests are merged, we don't want you to waste time creating a pull request that doesn't have the support of the community. This doesn't mean that even if the community supports an issue that the corresponding pull request will be merged, but it increases the chances with community support. *This step is highly encouraged for larger contributions, but not required. For smaller contributions (typos, adding tests, updating documentaion, minor code changes, etc.) it is not necessary to create a separate issue.*
+3. **Read through the `package.json`** - The `package.json` file in the root of the repository has a **lot** of useful information about the project. Especially read through the `scripts` section, as a lot of those scripts can help speed up your development process when working in Servable. There are scripts for running tests, building the website, debugging code, fixing lint issues, etc.
+
+##### During
+
+1. **Create a fork & branch** - Before contributing to Servable you must create a fork of the [main repository](https://github.com/servable/servable) and create a branch on your fork. It is highly discouraged from using a primary branch (ex. `main` or `alpha`) to make your changes. This is due to the fact that if you enable `Allow edits from maintainers` option, maintainers might commit directly to your primary branch which could cause problems if others are using your fork in their applications.
+2. **Install dependencies** - Run `npm install` to install all the dependencies of the project.
+3. **Maintain consistency throughout** - While working in the project, we highly encourage you to maintain the same coding style that the rest of the project uses. This means looking around at similar code and trying to adopt the same style and conventions in your code.
+4. **Run tests & linter often** - It is highly encouraged to run `npm test` & `npm run lint` often to ensure you are conforming to the project guidelines. In order for a pull request to be merged all tests must pass, the linter must throw no errors, and test code coverage must not decrease.
+5. **Write tests** - While (or better yet, before) making changes you should write tests in the test suite to ensure things work as expected.
+	1. **Test Edge Cases** - While writing tests try to consider edge cases that might occur and write test for those edge cases. For example, what happens if you a user passes in no arguments, or what happens if the type passed in is not the type you expect.
+	2. **Code Coverage Must Not Decrease** - Your pull request will not be merged if it decreases the code coverage for tests, so it is important to write tests to ensure any code added or modified is covered by tests.
+	3. **No Log Output** - It is also important that your tests do not print any output to the console or logs, this includes `console.log`, UncaughtPromiseExceptions, etc. All logs printed should come directly from Jest.
+	4. **One Test Must Fail Prior to Code Changes** - At *least* one test you write should fail without the code changes you have made.
+	5. **Self Contained and Static** - All tests should be self contained and should not rely on each other in order to pass. All tests must also be static and have no potential of failing based on random or outside factors.
+	6. **Logic inside Jest Blocks** - All test logic should take place within Jest blocks (ex. `it`, `before`, `beforeEach`, `after` or `afterEach`). No interaction with Servable or outside references should take place outside of those blocks (ex. you should not create models or schemas in the global or `describe` scope).
+6. **Update documentation** - For anything that effects users using Servable, documentation should be added/deleted/modified to reflect the changes you have made. It is important to ensure the documentation you write is as clear as possible, giving examples, and attempting to answer as many relevant questions as possible. For most cases JSDoc documentation should be added to the source files, and a pointer to the JSDoc documentation should be added to the relevant file in `docs/docs_src`. The pointer should look like `dyno_jsdoc_dist/SOURCEFILEPATH|SECTIONNAME` (for example: `dyno_jsdoc_dist/Model/index.js|model.name` will point to the `dist/Model/index.js` source file, and use the documentation for `model.name`). All pointers should point to the `dist` folder. In certain cases where the documentation does not reference a specific property or method in the code, it is fine to just write the documentation in the `docs/docs_src` folder (an example of this would be the `Attribute Types` section in the Schema documentation).
+7. **Commit small & often** - Please commit changes often and keep commit size to a minimum. It is highly discouraged from creating one massive commit with all of your changes in it. Every commit should also aim to pass the linter and tests. Commit messages should also be detailed enough to give a good explanation of the change made. Commit messages such as `changes` or `did stuff` are considered **poor** commit messages.
+
+##### After
+
+1. **Submit the pull request** - When submitting the pull request it is important to fill out the complete pull request template. This ensures reviewers of your pull request can easily understand what is going on and make sure all guidelines and requirements have been met. It is also highly recommended to enable the `Allow edits from maintainers` option (be aware that enabling this option means that maintainers have the right to commit to your branch at any time, *we do use this ability*).
+2. **Be prepared for questions and suggestions** - As others review your pull request it is important to be available to answer questions and promptly respond to code suggestions. Stale pull requests run the risk of being closed, even if it's a large change or a lot of effort was put into it.
+3. **Ask others for reviews** - If you know someone who is anticipating your work, ask them to test your branch and leave a detailed review on the pull request.
+
+##### Release
+
+Servable does not currently have a release schedule that we conform to. We attempt to batch work into a release every so often. If you have a need that requires us releasing a version sooner, please notify us, and we will attempt to cut a new release earlier (however this is not guaranteed, and you are still welcome to point to a branch in NPM if we are unable to release on your timeline).
+
+#### Translate Servable
+
+You can help Servable support more languages by translating our content into other languages. You can contribute by viewing our [Crowdin project page](https://crowdin.com/project/servablejscom) and start translating today!
+
+### How do I become a project maintainer?
+
+At this time we are pretty strict in terms of who gets write/merge access to Servable. The following are general guidelines we look for before granting those permissions, but other factors may apply depending on the situation.
+
+1. **Activity** - Likely the most important factor is we need to see you remain active on the project for an extended period of time. We want maintainers to be active and although we don't require maintainers to dedicated all their time to Servable, we are looking for maintainers to be active in the community.
+2. **Contributions** - We are looking for project maintainers to be active in contributing feedback, protocols, bug fixes, documentation improvements, and more to the project. Short version: we want project maintainers to show that they are dedicated to improving the project.
+
+In short, some starting tips towards becoming a project maintainer include:
+
+1. Submit pull requests to improve the project
+2. Answer questions in Slack or Stack Overflow
+3. Reply to issues on GitHub
+
+If you believe you have a case for becoming a project maintainer and feel as tho you meet those requirements [contact me](https://charlie.fish/contact) or reach out on Slack (Charlie Fish) and I'd be happy to discuss next steps with you.
+
+It is also important to note that if you become a project maintainer, and become inactive on the project, your project maintainer status may be revoked.
+
+---
+
+### What do project maintainers need to know?
+
+The following section is unlikely to be useful to general contributors to Servable, and is reserved for project maintainers.
+
+#### Release
+
+In order to release a version of Servable you can kick off this process by running `node publish`. This will kick off the release process. Following the steps it guides you through should lead to a successful release. Please [contact me](https://charlie.fish/contact) or message me on the Servable Slack (Charlie Fish) if you have questions or run into any issues.
+
+It is important to note that you must have write permissions to the `main` branch in order for this process to be successful.
+
+---
+
+## FAQ
+
+![logo](/img/icon.svg)
+
+<!-- ## Servable -->
+
+#### How is Servable different from other Node JS protocols?
+Servable is tailored for protocols which are a unique and opinionated way to model and develop a server. Other Node JS frameworks are either less structured or use other opinionated templates like controllers. 
+
+#### Should I learn Parse Server before I start using Servable?
+Yes! We highly recommend being familiar with Parse Server concepts before you use Servable. We know this overhead is not perfect. We are working to integrate Parse Server's incredible protocols straight into Servable and use a unified API in the future. We have made a quick guide to help you grasp the most important Parse Server concepts you need. Check it out if you're a Parse newbie ;)
+
+<!-- ## Protocols -->
+
+#### Are protocols independant from each other?
+We believe it is a healthy pattern to divide the development effort into capacities that overlap the least. During our developments we managed to refactor or create from scratch dozens of protocols and only in rare occasions did a protocol need the capacity of another protocol. For those use cases we thought about integrating an abstract API or a hook straight into the Servable namespace, for example, the *followable* protocol needs to send an email that is provided to the application by the *emailable* protocol. The *emailable* protocol will register its capacity to send emails to the Servable object, and the *followable* protocol will consume it without knowing the source protocol.
+
+#### Can protocols collide?
+Protocols can collide when they don't follow guidelines for naming. We recommend protocols to prefix the fields added 
+Protocols can collide when they don't follow guidelines for naming. We recommend protocols to prefix the fields they add to object by a unique key, usually its the protocol id itself or its slug if the id is too long. Servable also enforces functions name separation by uppending the protocol id or its slug to the functions declared by the protocol.
+
+#### Can I use third party protocols?
+We encourage developers to package their protocols and share them with the community, since protocols themselves are designed to be self sufficient and separated from the app code base and other protocols, it's super easy to make an npm package and publish it publicly or on an enterprise repository. 
+
+#### Why can't I modify the schema with the Servable Dashboard?
+The Servable Dashboard allows us to change the app schema by default. Although this behaviour is handy for local projects and its quick of use, we chose to use a strictly JSON based schema storage and update for these reasons:
+- Schema computation
+- Schema migration
+- Make the security more visible and mistakes more obvious
+- Versioning
+
+#### Can I modify a protocol
+Servable's api allows you to give parameters to a protocol.
+If these parameters are not enough for your use case, let's say you want to increase the security level of a protocol's class, you can fork an existing protocol onto the app's /protocols folder
+
+```bash
+yo servable:forkprotocol
+```
+
+#### How do I add an express middleware to my app?
+The *afterInit* method allows you manipulate the underlying express middleware when it has been initialized and ready. You can hook any middleware at this point.
+
+---
+
+## Installation
+
+import BashTabs from '@site/src/components/generic/bashTabs'
+
+
+
+Install Servable CLI globally, then use it to scaffold a new app.
+
+### Step 1: Install the Servable CLI
+
+You can also run the CLI without a global install:
+
+### Step 2: Create a new app
+
+From the folder where you want your project:
+
+```bash
+mkdir my-servable-app
+cd my-servable-app
+servable app new --appName="MyApp"
+```
+
+The command generates a project and installs dependencies.
+
+### Step 3: Start the app
+
+Inside the generated project, start your server:
+
+By default, Servable starts on a local port defined in your generated configuration.
+
+### Step 4: Verify the installation
+
+Check that:
+
+- The API server starts with no startup errors.
+- You can reach the health endpoint at `/health-check`.
+- The dashboard (if enabled in your app template) is accessible.
+
+### Next steps
+
+- Read [Troubleshooting](./troubleshooting) if startup fails.
+- Explore [Guides](../guides/overview) for routes, deployment, and usage patterns.
+- Use [CLI reference](../reference/commands/install) for all command options.
+
+---
+
+## Requirements
+
+import BashTabs from '@site/src/components/generic/bashTabs'
+
+
+
+#### [Node JS](https://nodejs.org/en/download/)
+Before you install Servable CLI, make sure Node.js is installed.
+
+Recommended for current Servable engine stack: Node.js 22.x LTS or higher.
+
+Minimum for CLI usage: Node.js 18.x or higher.
+
+When installing Node.js, you are recommended to check all checkboxes related to dependencies.
+
+#### Docker (for local environment) 
+- [Docker](https://docs.docker.com/get-docker)
+👉 *Version 20.10.0 or above*
+- Docker Compose
+👉 *Version 2.20.0 or above*
+
+The easiest and recommended way to get Docker Compose is to install Docker Desktop. Docker Desktop includes Docker Compose along with Docker Engine and Docker CLI which are Compose prerequisites.
+[More](https://docs.docker.com/compose/install/)
+
+#### Servable CLI
+The Servable Command Line Interface
+
+---
+
+## Troubleshooting
+
+Use this page when your first app does not start as expected.
+
+### 1. CLI command not found
+
+#### Situation
+`servable: command not found` appears in your terminal.
+
+#### Solution
+
+1. Install CLI globally:
+
+```bash
+npm install -g @servable/cli
+```
+
+2. Or run with npx:
+
+```bash
+npx @servable/cli app new --appName="MyApp"
+```
+
+#### Explanation
+Your shell cannot find the global CLI binary, usually because the package is not installed globally or your PATH is not updated.
+
+### 2. Engine/runtime version error
+
+#### Situation
+Startup fails with Node version or engine compatibility errors.
+
+#### Solution
+
+1. Check your Node version:
+
+```bash
+node -v
+```
+
+2. Use Node.js 22.x LTS when running the Parse Server engine.
+3. Reinstall dependencies after switching Node versions:
+
+```bash
+rm -rf node_modules package-lock.json yarn.lock
+npm install
+```
+
+#### Explanation
+Different packages can declare different minimum Node versions. Using a single supported runtime avoids hard-to-debug startup issues.
+
+### 3. App boots but routes are missing
+
+#### Situation
+The server starts, but expected endpoints or protocol behavior are not available.
+
+#### Solution
+
+1. Verify the protocol is declared on the target model.
+2. Restart the app after any schema or protocol declaration change.
+3. Check startup logs for schema validation, route registration, and hook registration messages.
+
+#### Explanation
+In Servable, many routes/functions are registered by protocols during startup lifecycle phases. If declaration or startup wiring fails, endpoints can be absent even when process is alive.
+
+### 4. Health endpoint returns 500
+
+#### Situation
+`/health-check` responds with HTTP 500.
+
+#### Solution
+
+1. Inspect startup logs for the first error before health route registration.
+2. Validate environment variables used by your app configuration.
+3. Confirm database connectivity and engine configuration.
+
+#### Explanation
+The health endpoint reflects startup state. A 500 usually means initialization failed in an earlier phase (configuration, schema, migration, or engine launch).
+
+### 5. Schema or migration failure after model changes
+
+#### Situation
+App fails right after adding or modifying model/protocol schema.
+
+#### Solution
+
+1. Re-check schema field names, types, and indexes.
+2. Ensure protocol parameters required by schema logic are present.
+3. Run in a staging or local environment first when changing schema-affecting behavior.
+
+#### Explanation
+Servable computes and validates target schema at startup. Invalid schema contributions or incompatible changes will stop boot to avoid inconsistent runtime state.
+
+### Need more details?
+
+- Read [Getting Started requirements](./requirements)
+- Read [Guides overview](../guides/overview)
+- Read [Reference overview](../reference/overview)
+
+---
+
+## Debugging Boot Failures
+
+`launch()` runs through many sequential phases (see [Runtime lifecycle](../reference/lifecycle)
+for the full list), and it's easy to end up staring at a wall of log output with no idea which
+line actually matters. This guide is the practical read-the-log process, not a concepts page.
+
+### Read the first error, not the last
+
+Boot logs are noisy: Kafka consumer rebalancing, protocol instance construction, deprecation
+warnings, none of that is the cause. Scroll to (or `grep` for) the **first** `Error`, exception,
+or stack trace, not whatever's at the bottom. A single early failure frequently cascades into
+several unrelated-looking messages afterward.
+
+### Confirm whether launch actually finished
+
+```bash
+grep "Finished launching Servable endpoint" your-boot.log
+```
+
+If that line is present, the app *did* complete every phase. Any errors before it were either
+non-fatal (caught and logged, boot continued) or resolved themselves (a dependency that wasn't
+ready yet became ready moments later). If it's absent, whatever killed the process is somewhere
+above, usually right before the log simply stops.
+
+### Distinguish transient boot-race noise from real failures
+
+Some errors are expected during the first few seconds of a fresh docker-compose bring-up, because
+a dependency (Kafka/Redpanda, Typesense, ClickHouse) hasn't finished its own startup yet:
+
+```
+Request to Node 0 failed due to "ECONNREFUSED Error"
+Request to Node 0 failed due to " Request failed with HTTP code 503 | Server said: Not Ready or Lagging"
+```
+
+These are noise **only if launch still reaches "Finished launching" afterward** and the dependency
+is confirmed healthy once boot completes (`docker ps`, or a direct health-check against the
+service). If launch never recovers, or the same error keeps repeating well past a reasonable
+startup window, treat it as real.
+
+### Common failure signatures
+
+| What you see | What it actually means |
+|:--|:--|
+| `MongooseServerSelectionError: connect ECONNREFUSED 127.0.0.1:27017` | Nothing is listening on the *declared* port, usually a dynamically-reassigned port (see [Local development](./local-development)) that never made it into the running config, or the container genuinely isn't up. |
+| `No servable.schema.json found` | Nobody ran `servable schema build`/`apply` on this checkout. See [Schema Migrations](./schema-migrations). |
+| `servable.schema.json is out of date` | A protocol's `schema.json` changed without rebuilding the artifact. Run `servable schema build` and commit. |
+| `compatibilityFloor (N) is lower than the database's recorded floor` | A newer deploy already ran `schema contract` against this database. Rebuild from current sources. |
+| `/health-check` 404s despite a clean-looking boot | `Route.define()` wasn't awaited somewhere in its call chain. See [Route and job contracts](../reference/route-job-contracts). The failure is silent by construction; nothing else in the log will point at it. |
+| `Error response from daemon: Conflict. The container name ... is already in use` | A container with that name exists outside this compose project. See [Local development](./local-development). |
+
+### Health-check specifically
+
+A working `/health-check` doesn't just mean the process didn't crash; it means the very last
+launch phase (route registration) completed. If everything else in the log looks clean but
+`/health-check` doesn't respond, that phase itself is the thing to investigate, not an earlier one.
+
+```bash
+curl -i http://localhost:<port>/health-check
+```
+
+`200` with `"Health check passed"` is the success path. `500` with `"Server failed"` means launch
+hit its outer catch block somewhere and registered the fallback route; the real error is further
+up the log. No response at all (connection refused/timeout, not a 404 or 500) means the route was
+never registered at all; see the `Route.define()` row above.
+
+### Related
+
+- [Runtime lifecycle](../reference/lifecycle)
+- [Troubleshooting by lifecycle](../reference/troubleshooting-lifecycle)
+- [Local development with Docker](./local-development)
+- [Schema Migrations](./schema-migrations)
+
+---
+
+## Kubernetes
+
+import SVGComponent from '@site/src/components/generic/svg'
+import SVGPlus from '@site/src/components/generic/svgplus'
+
+
+
+Use this guide to deploy a Servable app on Kubernetes.
+
+### Prerequisites
+
+- A working container image for your Servable app.
+- A Kubernetes cluster and namespace access.
+- Externalized configuration and secrets.
+
+### Deployment flow
+
+1. Build and push your app image.
+2. Create config/secrets for runtime environment variables.
+3. Apply deployment + service manifests.
+4. Expose ingress or load balancer routes.
+5. Validate health endpoint and startup logs.
+
+### Runtime checks
+
+After deployment, verify:
+
+- Pods become ready.
+- `/health-check` returns success.
+- Schema/startup logs show no migration errors.
+
+### Operational tips
+
+1. Use staged rollouts for schema-sensitive updates.
+2. Keep protocol parameters environment-driven.
+3. Roll back quickly if startup lifecycle fails.
+
+### Related
+
+- [Guides overview](../overview)
+- [Schema migrations](../schema-migrations)
+- [Jobs and background work](../jobs-and-background)
+
+---
+
+## Jobs and Background Work
+
+Background jobs let you run asynchronous or scheduled tasks outside request/response routes.
+
+### Typical use cases
+
+- Notifications and outbound integration calls.
+- Search index refreshes.
+- Cleanup and archival tasks.
+- Scheduled consistency checks.
+
+### Design rules
+
+1. Keep jobs idempotent.
+2. Ensure retries are safe.
+3. Keep payloads small and explicit.
+4. Log enough context to debug failed executions.
+
+### Operational checklist
+
+1. Verify scheduler/database requirements are configured.
+2. Confirm jobs are registered at startup.
+3. Observe first execution in staging.
+4. Add monitoring and alerting for failures.
+
+### Interaction with routes
+
+Routes should enqueue or trigger background tasks, not execute heavy work inline.
+This keeps APIs fast and resilient under load.
+
+### Related
+
+- [Reference protocol jobs](../reference/protocol/jobs)
+- [Reference protocol service](../reference/protocol/service)
+- [Guides add route](./routes/add)
+
+---
+
+## Local Development with Docker
+
+Servable brings up every protocol's declared dependencies (databases, caches, search indexes) as
+a single docker-compose stack at launch. Most of the time this is invisible, but a few real
+failure modes show up specifically in local development, when you restart often and sometimes
+touch containers by hand. This guide is a direct walkthrough of those, not a general concepts page.
+
+### "It was working, now I get ECONNREFUSED on a port that used to work"
+
+A service's declared host port is a request, not a guarantee. `getPortNear` reassigns it to the
+nearest free port if the declared one is taken (running two worktrees' stacks at once is the most
+common cause). If your own `.env` hardcodes that port instead of reading it dynamically, you'll
+get `ECONNREFUSED` against the *old* port even though the container is healthy on a new one.
+
+Check what's actually running:
+
+```bash
+docker ps --format "{{.Names}}\t{{.Ports}}" | grep my-service
+```
+
+If the port doesn't match your `.env`, and nothing is actually holding the *declared* port anymore
+(`lsof -nP -iTCP:<port> -sTCP:LISTEN`), the reassignment likely got frozen into the target compose
+file from an earlier moment when the port genuinely was taken. Clear it and relaunch:
+
+```bash
+rm .system/<namespace-if-set>/<protocol-id>/docker/docker-compose.yaml
+```
+
+The next launch re-runs port adaptation from scratch. See
+[Protocol system](../reference/protocol/system) for why this file exists and what it tracks. The
+proper long-term fix is an `x-servable-envs` entry on the service so your app reads the real port
+at boot instead of a hardcoded one, see that same page.
+
+### "I recreated a container by hand and now it won't come back up right"
+
+If you `docker rm` a container yourself (to fix a stuck port binding, for example: `docker
+start`/`restart` on an existing container can silently fail to rebind a previously-configured host
+port, so a full `docker rm` and recreate is the reliable fix), Servable's own launch code has no
+way to notice you did that. It only compares the *declared* compose config against what it last
+recorded, not against what Docker is actually running. The target compose file above still says
+"already applied," so the next launch skips recreating anything, and you're left with nothing
+running at all.
+
+Same fix: delete that protocol's target compose file before relaunching, so the fingerprint check
+has nothing to match against and genuinely recreates the stack.
+
+### "docker-compose up failed with a container name conflict"
+
+```
+Error response from daemon: Conflict. The container name "/my-container" is already in use...
+```
+
+This happens when a container with that exact name already exists but wasn't created under this
+same compose project, commonly one you created manually at some point (check with `docker
+inspect <name> --format '{{json .Config.Labels}}'`; an empty `{}}` means no compose project owns
+it). Docker enforces container names globally, regardless of which project asked for the name.
+
+If it's safe to recreate (data is bind-mounted, not in a Docker-managed volume, so it survives),
+stop and remove it, then relaunch:
+
+```bash
+docker stop my-container && docker rm my-container
+```
+
+If something else (like another running service) actively depends on that exact container staying
+up, restart that dependent afterward. It will have a stale connection to whatever replaced it.
+
+### Isolating multiple checkouts from each other
+
+If you're running more than one worktree of the same app and want their docker stacks fully
+separate (different containers, different data), set `system.docker.namespace` in
+`servable.config.js`:
+
+```js
+export default {
+  id: 'my-app',
+  system: {
+    docker: {
+      namespace: 'my-worktree-name',
+    },
+  },
+}
+```
+
+See [Protocol system](../reference/protocol/system) for exactly what this does and does not
+isolate (ports and bind-mount volumes are already unique per checkout without it; this is
+specifically for compose project/network names and explicit `container_name`s).
+
+### Related
+
+- [Protocol system](../reference/protocol/system)
+- [Config adaptation](../reference/config-adaptation)
+- [Debugging boot failures](./debugging-boot-failures)
+
+---
+
+## Overview
+
+Guides are practical, task-oriented pages for end users building real services with Servable.
+
+Use guides when you already understand the basics and want to complete a specific task quickly.
+
+### In this section
+
+- Deployment guides: configure and deploy your app to target environments.
+- Route guides: expose and structure HTTP endpoints.
+- Usage guides: compose models, protocols, and app behavior safely.
+
+### Suggested reading order
+
+1. Start with [Getting Started](../gettingstarted/requirements).
+2. Continue with this Guides section for task execution.
+3. Jump to [Reference](../reference/overview) for exact command/API details.
+
+### Related guides
+
+- [Use Servable in your app](./use)
+- [Deployment](./deployment/kubernetes)
+- [Add a route](./routes/add)
+- [Schema migrations](./schema-migrations)
+- [Jobs and background work](./jobs-and-background)
+- [Local development with Docker](./local-development)
+- [Debugging boot failures](./debugging-boot-failures)
+
+---
+
+## Add a GET route
+
+import SVGComponent from '@site/src/components/generic/svg'
+import SVGPlus from '@site/src/components/generic/svgplus'
+
+
+
+API stands for Application Programming Interface, meaning it's how to communicate with the system you are creating. A route within an API is a specific path to take to get specific information or data out of.
+
+```js
+export default ({
+    __servableType: 'route',
+    method: Servable.App.Route.Constants.Methods.GET,
+    path: '/engine/byname',
+    cache: {
+        type: Servable.App.Route.Constants.Cache.Type.InMemory,
+        params: {
+            window: 10
+        }
+    },    
+    rateLimiting: {
+        type: Servable.App.Route.Constants.RateLimiting.Type.FixedByIp,
+        params: {
+            limit: 10,
+            window: 100,
+            message: 'Too many requests'
+        }
+    },
+    schema: {
+        queryString: {
+            protocolId: { type: 'string' }
+        },
+        response: {
+            200: {
+                type: 'object',
+                properties: {
+                    index: { type: 'Object' }
+                }
+            }
+        }
+    },
+    specification: {
+        tags: [
+            "bridge"
+        ],
+        summary: "Get user by user name",
+        description: "",
+        operationId: "getUserByName",
+        parameters: [
+            {
+                "name": "username",
+                "in": "path",
+                "description": "The name that needs to be fetched. Use user1 for testing. ",
+                "required": true,
+                "schema": {
+                    "type": "string"
+                }
+            }
+        ],
+        responses: {
+            200: {
+                "description": "successful operation",
+                "content": {
+                    "application/json": {
+                        "schema": {
+                            "$ref": "#/components/schemas/User"
+                        }
+                    },
+                    "application/xml": {
+                        "schema": {
+                            "$ref": "#/components/schemas/User"
+                        }
+                    }
+                }
+            },
+            400: {
+                "description": "Invalid username supplied"
+            },
+            404: {
+                "description": "Engine not found"
+            }
+        }
+    },
+    request: {
+        type: 'application/json'
+    },
+    handler: async (request, response, next) => {
+        const { query } = request
+        // const { searchTerm, page = 0, pageSize = 10, sort = 'asc', } = query
+        const { bridgeId, } = query
+        let _query = new Servable.App.Query('Engine')
+        _query.equalTo('uniqueRef', bridgeId)
+        _query.select(['name', 'description', 'manifest', 'indexContent', 'documentation', 'owner'])
+        _query.include(['owner'])
+        let result = await _query.first({ useMasterKey: true })
+
+        if (!result) {
+            throw ({ message: "No adapter found", code: 204 })
+        }
+        const payload = {
+            protocolId: bridgeId,
+            id: result.id,
+            index: result.get('indexContent'),
+            documentation: result.get('documentation'),
+            manifest: result.get('manifest'),
+            user: {
+                lastname: result.get('owner').get('lastname'),
+                id: result.get('owner').id,
+                slug: result.get('owner').get('slugableValue'),
+                avatarUrl: result.get('owner').get('avatarUrl'),
+            },
+            interaction: {
+                comments: {
+                    count: 20,
+                },
+                likes: {
+                    count: 20,
+                }
+            }
+        }
+        return payload
+    }
+})
+```
+
+### References
+- [Protocol routes](../../reference/protocol/routes)
+
+---
+
+## Add a POST route
+
+import SVGComponent from '@site/src/components/generic/svg'
+import SVGPlus from '@site/src/components/generic/svgplus'
+
+
+
+API stands for Application Programming Interface, meaning it's how to communicate with the system you are creating. A route within an API is a specific path to take to get specific information or data out of.
+
+```js
+export default ({
+    __servableType: 'route',
+    method: Servable.App.Route.Constants.Methods.GET,
+    path: '/engine/byname',
+    cache: {
+        type: Servable.App.Route.Constants.Cache.Type.InMemory,
+        params: {
+            window: 10
+        }
+    },    
+    rateLimiting: {
+        type: Servable.App.Route.Constants.RateLimiting.Type.FixedByIp,
+        params: {
+            limit: 10,
+            window: 100,
+            message: 'Too many requests'
+        }
+    },
+    schema: {
+        queryString: {
+            protocolId: { type: 'string' }
+        },
+        response: {
+            200: {
+                type: 'object',
+                properties: {
+                    index: { type: 'Object' }
+                }
+            }
+        }
+    },
+    specification: {
+        tags: [
+            "bridge"
+        ],
+        summary: "Get user by user name",
+        description: "",
+        operationId: "getUserByName",
+        parameters: [
+            {
+                "name": "username",
+                "in": "path",
+                "description": "The name that needs to be fetched. Use user1 for testing. ",
+                "required": true,
+                "schema": {
+                    "type": "string"
+                }
+            }
+        ],
+        responses: {
+            200: {
+                "description": "successful operation",
+                "content": {
+                    "application/json": {
+                        "schema": {
+                            "$ref": "#/components/schemas/User"
+                        }
+                    },
+                    "application/xml": {
+                        "schema": {
+                            "$ref": "#/components/schemas/User"
+                        }
+                    }
+                }
+            },
+            400: {
+                "description": "Invalid username supplied"
+            },
+            404: {
+                "description": "Engine not found"
+            }
+        }
+    },
+    request: {
+        type: 'application/json'
+    },
+    handler: async (request, response, next) => {
+        const { query } = request
+        // const { searchTerm, page = 0, pageSize = 10, sort = 'asc', } = query
+        const { bridgeId, } = query
+        let _query = new Servable.App.Query('Engine')
+        _query.equalTo('uniqueRef', bridgeId)
+        _query.select(['name', 'description', 'manifest', 'indexContent', 'documentation', 'owner'])
+        _query.include(['owner'])
+        let result = await _query.first({ useMasterKey: true })
+
+        if (!result) {
+            throw ({ message: "No adapter found", code: 204 })
+        }
+        const payload = {
+            protocolId: bridgeId,
+            id: result.id,
+            index: result.get('indexContent'),
+            documentation: result.get('documentation'),
+            manifest: result.get('manifest'),
+            user: {
+                lastname: result.get('owner').get('lastname'),
+                id: result.get('owner').id,
+                slug: result.get('owner').get('slugableValue'),
+                avatarUrl: result.get('owner').get('avatarUrl'),
+            },
+            interaction: {
+                comments: {
+                    count: 20,
+                },
+                likes: {
+                    count: 20,
+                }
+            }
+        }
+        return payload
+    }
+})
+```
+
+### References
+- [Protocol routes](../../reference/protocol/routes)
+
+---
+
+## Schema Migrations
+
+Servable tracks schema changes through a committed artifact, `servable.schema.json`, rather than
+versioned migration files. There is no `up.js`/`down.js` pair to write: schema changes are
+detected by diffing the current protocol sources against what was last committed, and classified
+automatically as safe or breaking.
+
+See [`servable schema`](../reference/commands/schema) for the full command reference. This guide
+covers the workflow and what to do when a boot fails because of it.
+
+### The three states a change can be in
+
+- **Safe (additive)**: a new class, a new field, a widened permission, a field newly marked
+  `deprecated: true`. Applies with `servable schema apply`, no further steps needed.
+- **Breaking, pre-deprecated**: removing a field or class that was already marked `deprecated:
+  true` in an earlier commit. Requires `servable schema contract --reason=...`, which also bumps
+  the artifact's `compatibilityFloor`.
+- **Breaking, not deprecated**: a type change, a field newly becoming required, an index change,
+  or a removal that skipped the deprecation step. Never applies automatically. Either back out the
+  change, or mark the thing `deprecated: true` first and contract it in a later release.
+
+### Standard workflow
+
+1. Change a protocol's `schema.json`.
+2. `servable schema plan`, to see what changed and which bucket it falls into.
+3. `servable schema apply` for additive changes, or `servable schema contract --reason="..."` for
+   a deprecated removal.
+4. Commit the updated `servable.schema.json` alongside the protocol change, in the same PR.
+5. `servable schema plan --ci` in CI (or a pre-push hook) catches anything breaking before merge.
+   It's a pure file diff, no database required.
+
+### What happens at boot
+
+The running server reads the committed `servable.schema.json` and performs two independent
+checks, either of which stops boot outright:
+
+1. **Drift**: the schema this boot's own code would produce must match the committed artifact's
+   hash exactly. A mismatch means someone edited a `schema.json` without running `servable schema
+   build`/`apply` before committing.
+2. **Compatibility floor**: this build's `compatibilityFloor` must be greater than or equal to
+   what's already recorded for the database it's connecting to. If a newer deploy already ran
+   `schema contract` and removed something this build's code still expects, boot refuses rather
+   than run against fields that no longer exist.
+
+If `servable.schema.json` doesn't exist at all, boot refuses immediately with an explicit error.
+Every deploy is expected to have one committed; there's no fallback to "just build whatever the
+current code produces."
+
+### Common failure signals
+
+- **"No servable.schema.json found"**: nobody ran `servable schema build`/`apply` on this
+  checkout yet. Run it and commit the result.
+- **"servable.schema.json is out of date"**: the committed artifact's hash doesn't match what the
+  current protocol sources produce. Someone changed a `schema.json` without rebuilding the
+  artifact. Run `servable schema build` (or `apply`) and commit.
+- **"compatibilityFloor is lower than the database's recorded floor"**: this build is older than
+  a schema contraction that already happened elsewhere. Rebuild from current sources rather than
+  deploying stale code.
+
+### Production guidance
+
+- Prefer additive changes; they need no coordination beyond `schema apply`.
+- Deprecate before you remove: mark a field `deprecated: true` in one release, contract it in a
+  later one, so pods mid-rollout never see a field vanish out from under them.
+- Test the full boot (including the schema check) in staging before production. The failure
+  modes above are all boot-time, not runtime.
+
+### Related
+
+- [`servable schema` command reference](../reference/commands/schema)
+- [Getting Started troubleshooting](../gettingstarted/troubleshooting)
+- [Reference: protocol schema](../reference/protocol/schema)
+- [Deployment: Kubernetes](./deployment/kubernetes)
+
+---
+
+## Use a protocol
+
+A protocol applies to a class.
+You can add a protocol to the static protocols array.
+
+### Simple declaration
+Use the protocol's id in the array of protocols:
+
+```js
+export default [
+    'localable',
+    'countryable',
+    'taggable',
+    'slugable',
+    'usersinable',
+    'reviewable',
+    'versionable',
+    'printable',
+    'commentable',
+    'reactable',
+    'rolehostable',
+    'searchable',
+    'currencyable',
+    'bankaccountable',
+    'walletable',
+    'publishable',
+    'disposableorphansable',
+    'disposablechildrenable',
+    'notificationtargetable',
+    'savable',
+    'sharable',
+    'pageable',
+    'followable'
+]
+```
+
+### Use a specific protocol or version
+Let's say we want to use the apptunnelable protocol to our ServableApp class.
+apptunnelable makes it possible to tunnel all the api calls to the current server via NGROK.
+It is possible to give a struct with the id of the protocol and the module added to the project (npm).
+You can also give configuration options to the protocol via the params object.
+
+```js
+export default class ServableApp extends Servable.App.Object {
+    static protocols = [
+        {
+            id: 'apptunnelable',
+            module: {
+                '@servable-community/apptunnelable-parse-server': '*'
+            },
+            params: {
+                tunnelUrl: process.env.SERVABLE_EXTERNAL_TUNNEL,
+                serverPort: process.env.SERVER_PORT,
+                ngrokAuthToken: process.env.NGROK_AUTH_TOKEN
+            }
+        },
+        'appagentable',
+        'localable',
+        'countryable',
+        'taggable',
+        'slugable',
+        'usersinable',
+        'reviewable',
+        'versionable',
+        'printable',
+        'commentable',
+        'reactable',
+        'rolehostable',
+        'searchable',
+        'currencyable',
+        'disposableorphansable',
+        'disposablechildrenable',
+        'notificationtargetable',
+        'savable',
+        'sharable',
+        {
+            id: 'publishable',
+            name: 'publishable',
+            slug: 'ps',
+            module: {
+                '@servable-community/publishable-parse-server': '*'
+            },
+            version: '*',
+            params: {
+                liveModels: ['publishable'],
+                schema: {
+                    restrictSecurity: true
+                }
+            }
+        },
+        {
+            id: 'pageable',
+            name: 'pageable',
+            slug: 'pg',
+            params: {}
+        },
+        'followable',
+        {
+            id: 'emailable',
+            name: 'emailable',
+            slug: 'em',
+            params: {
+                apiKey: process.env.EMAIL_API_KEY,
+                frontWebUrl: process.env.FRONT_WEB_URI,
+                env: process.env.NODE_ENV,
+                appName: process.env.PARSE_SERVER_APP_NAME,
+                restrictSend: process.env.EMAIL_RESTRICT_SEND,
+                restrictTo: process.env.EMAIL_RESTRICT_SEND_TO,
+                restrictToRegex: process.env.EMAIL_RESTRICT_SEND_TO_REGEX,
+                schema: {
+                    exclude: false
+                }
+            }
+        },        
+        {
+            id: 'videobunnyable',
+            name: 'videobunnyable',
+            slug: 'vb',
+            params: {
+                apiKey: process.env.VIDEO_BUNNY_API_KEY,
+                appName: process.env.PARSE_SERVER_APP_NAME
+            }
+        },
+        'faqable',        
+        'userproxyable',
+        'addressable',
+        'addresssocialable',
+        'userrequestable',
+    ]
+```
+
+### API
+
+- id: the unique id for the protocol
+- name: the name of the protocol
+- slug: experimental: the slug that will be used by the protocol instead of the full name
+- params: an object containing configuration parameters that will be passed to the protocol during execution
+- module: an object containing the dependency used for this protocol, along with a specific version if needed
+
+---
+
+## License
+
+:::info
+Servable is still experimental and its api may change in the future.
+:::
+
+![logo](/img/icon.svg)
+
+**Servable** uses GPL:
+
+*GNU General Public License (GPL): The GPL is one of the most well-known open source licenses. It is considered a restrictive license, as it requires that any changes made to the code must be released under the same GPL license, and any software that uses the code must also be released under the same GPL license. Additionally, if a user distributes the software, they must also provide the source code and any changes they made to it.*
+
+---
+
+## Overview(Docs)
+
+:::info
+Servable is still experimental and its api may change in the future.
+:::
+
+![logo](/img/icon.svg)
+
+**Servable** is a Node JS framework built for protocols running on your framework engine of choice. It provides a concise, easy to use and scalable template to get the best of protocols.
+
+The Servable framework at its core is a server template that uses the @servable/server to launch the different protocols applied to models and executed on the framework engine. It does not handle any database nor does it expose any API by itself. Instead it relies on a Framework engine that conforms to a set of APIs defined by Servable (Object, Query, Auth, ...). 
+
+Main protocols:
+- Quick start and Plug & Play Node JS framework
+- Tailored for protocols
+- Community protocols
+- Schema based models and auto-migration 
+- Highly extensible
+
+### Servable documentation
+This is the official documentation site for Servable. Content on this site is sourced in GitHub. For more information, see [Contributing to Servable](./contributing) documentation.
+
+This site is based on [Docusaurus](https://docusaurus.io).
+
+We use the [Diátaxis documentation authoring framework](https://diataxis.fr) which organizes technical documentation into a system based on four quadrants:
+
+- Learning-oriented Tutorials provide hands-on lessons where users can learn the framework by doing.
+
+- Problem-oriented How-to Guides provide recipes to solve specific goals you may encounter while building a LoopBack project.
+
+- Understanding-oriented Concepts pages provide the explanation of architecture concepts, wider view and deeper knowledge about the framework.
+
+- Information-oriented Reference guides provide technical description of the machinery and how to use it.
+
+---
+
+## Quick Start 🚀
+
+import BashTabs from '@site/src/components/generic/bashTabs'
+// import Flow from '@site/src/components/generic/flow'
+
+
+
+This quick start will use the @servable/parse-server-engine engine.
+
+#### Step 1: Install [Node JS](https://nodejs.org/en/download/)
+Before you install Servable, make sure to download and install Node.js (version 18.x or higher), a JavaScript runtime.
+When installing Node.js, you are recommended to check all checkboxes related to dependencies.
+
+#### Step 2: Docker (for local environment) 
+- [Docker](https://docs.docker.com/get-docker)
+👉 *Version 20.10.0 or above*
+- Docker compose
+👉 *Version 2.20.0 or above*
+
+The easiest and recommended way to get Docker Compose is to install Docker Desktop. Docker Desktop includes Docker Compose along with Docker Engine and Docker CLI which are Compose prerequisites.
+[More](https://docs.docker.com/compose/install/)
+
+#### Step 3: Install the Servable CLI
+The Servable Command Line Interface 
+
+#### Step 4: Create a new Servable service 
+Using the @servable/parse-server-engine:
+```bash
+servable app new -q
+```
+The Servable service has a dedicated system docker-compose for local development that will start a mongodb database, a Parse Server dashboard, a Redis cache database and a Redis Live Query server.
+
+#### Step 5: Add your own model
+```bash
+servable model add
+```
+
+Models definition are stored in the app/schema folder.
+
+#### Step 6: Start the server
+
+At this point the local Servable docker compose has been launched and you can access
+- The **API endpoint** at [http://localhost:1387/servable](http://localhost:1387/servable)
+- The **Parse Server Dashboard** at [http://localhost:4080](http://localhost:4080) (username: admin, password: PASSWORD_TO_CHANGE)
+- The **Minio ui endpoint** at [http://localhost:9001](http://localhost:9001) (username: MINIO_USERNAME_TO_CHANGE, password: MINIO_PASSWORD_TO_CHANGE)
+
+---
+
+## Cloud Function Contracts
+
+This page documents how protocol cloud functions are named and registered at runtime.
+
+### Registration pipeline
+
+Cloud functions are wired during schema registration using this flow:
+
+1. Protocol function files are loaded.
+2. Each file export key is iterated.
+3. A function name is computed from `key` and optional `prefix`.
+4. Function is registered with `Servable.App.Cloud.define(name, handler)`.
+
+### Naming rules
+
+Function names are computed as:
+
+- no prefix: `name = key`
+- with prefix: `name = prefix + CapitalizeFirstLetter(key)`
+
+Examples:
+
+- `prefix = "blog"`, `key = "publish"` => `blogPublish`
+- no prefix, `key = "ping"` => `ping`
+
+### Handler contract
+
+A function handler is expected to be an async callable that accepts cloud request context and returns serializable data.
+
+Minimal pattern:
+
+```js
+export default async ({ params, user }) => {
+  return {
+    ok: true,
+    params,
+    userId: user ? user.id : null
+  }
+}
+```
+
+### Stability guidance
+
+1. Treat function names as public API once clients depend on them.
+2. Avoid renaming function keys without compatibility strategy.
+3. Keep prefixing deterministic and documented for each protocol.
+4. Keep payload and response shapes explicit.
+
+### Source of truth
+
+- server/src/launch/wireSchema/register/cloudCode/index.js
+- server/src/launch/wireSchema/register/cloudCode/registerFile.js
+- server/src/launch/wireSchema/register/cloudCode/registerItem.js
+
+### Related
+
+- [Protocol functions](./protocol/functions)
+- [Runtime lifecycle](./lifecycle)
+- [Troubleshooting by lifecycle](./troubleshooting-lifecycle)
+
+---
+
+## $ servable app
+
+### Create a new app
+Creates a new servable app and installs dependencies.
+```bash
+servable app new
+```
+
+#### Options
+```bash
+  -n, --appName              App name                                                      [string] [default: "MyAppName"]
+      --appDescription       App description                                          [string] [default: "A Servable service"]
+      --bridgeframeworkId    Engine to use                  [string] [default: "@servable/parse-server-engine"]
+  -i, --installDependencies  Install dependencies                                                [boolean] [default: true]
+  -l, --license              License                                                             [string] [default: "MIT"]
+  -p, --packageManager       Package manager ('npm', 'yarn' or 'pnpm')                           [string] [default: "npm"]
+  -g, --gitInit              Initialize a git repository                                         [boolean] [default: true]
+  -d, --destination          Choose a destination                                                                 [string]
+      --appPort              App port                                                             [number] [default: 1387]  
+```
+
+#### Example
+```bash
+servable app new --appName='MyApp' --adapter='@servable/cli'
+```
+
+#### Help
+```bash
+servable app -h
+```
+
+---
+
+## $ servable auth
+
+import BashTabs from '@site/src/components/generic/bashTabs'
+
+
+
+### Status
+Checks authentication status with Servable server.
+```bash
+servable auth status
+```
+
+#### Options
+N/A
+
+#### Example
+```bash
+servable auth status
+```
+
+#### Help
+N/A
+
+### Login
+Log into Servable server.
+```bash
+servable auth login
+```
+
+#### Options
+```bash
+      --registryUsername      Username                                                                            [string]
+  -u, --registryPassword      Password                                                                            [string]
+      --registrySessionToken                                                              [number] [default: 1387]  
+```
+
+#### Example
+```bash
+servable auth login --registryUsername myemail@gmail.com --registryPassword XXXX-XXXX
+```
+
+#### Help
+```bash
+servable auth login -h
+```
+
+### Logout
+Logout of Servable server.
+```bash
+servable auth logout
+```
+
+#### Options
+```bash
+    --registryConfirmLogout  Logout of Servable                                                           [number] [default: 1387]  
+```
+
+#### Example
+```bash
+servable auth logout
+```
+
+#### Help
+```bash
+servable auth logout -h
+```
+
+---
+
+## Installation(Commands)
+
+import BashTabs from '@site/src/components/generic/bashTabs'
+
+
+
+### Global installation
+
+### Quick usage
+
+---
+
+## $ servable model
+
+Adds a new model (class) to an existing protocol.
+
+### Add a model
+
+```bash
+servable model add
+```
+
+Prompts for:
+
+```bash
+  protocolPath       Protocol to add a model to
+  className          Class name                (required)
+  classDescription   Class description          (required)
+  license
+```
+
+Scaffolds the new class's files inside the target protocol and registers it in the protocol's
+`schema.json`. This is the write-back step that makes the new class part of what `servable schema
+build` compiles into the app's committed artifact. See
+[Protocol schema](../protocol/schema) for the file format, and
+[`servable schema`](./schema) for compiling and committing the change afterward.
+
+### Related
+
+- [Protocol schema reference](../protocol/schema)
+- [`servable schema` command reference](./schema)
+- [`servable protocol` command reference](./protocol)
+
+---
+
+## $ servable protocol
+
+Scaffolds, adds, ejects, and documents protocols: the reusable units of behavior (classes,
+routes, jobs, triggers, schema) that a Servable app composes.
+
+### Create a standalone protocol project
+
+```bash
+servable protocol new
+```
+
+Prompts for a protocol id, destination, package manager, license, and release type, then scaffolds
+a new protocol project you can develop and publish independently of any one app.
+
+### Add a protocol directly inside an app
+
+```bash
+servable protocol add
+```
+
+Scaffolds an empty protocol at `<appPath>/protocols/<protocolId>`, for a protocol that only ever
+needs to live inside this one app, with no separate package/publish step.
+
+### Eject a protocol out of an app
+
+```bash
+servable protocol eject
+```
+
+Copies a protocol currently living inside an app out to its own standalone project (same shell as
+`protocol new`), then, if you confirm the `updateApp` prompt, removes it from the app and
+updates the app's `package.json` to depend on it instead. Use this when an in-app protocol has
+grown into something you want to reuse elsewhere or publish separately.
+
+### Generate protocol documentation
+
+```bash
+servable protocol document
+```
+
+Prompts for a protocol path and writes generated documentation for it (via `@servable/tools`'
+`documentProtocol`): a structural summary of what the protocol declares (classes, routes, jobs),
+not prose you write yourself.
+
+### Community protocols
+
+```bash
+servable protocol community use
+```
+
+Wires an existing protocol from Servable's community registry into an app, prompting for the
+protocol, target app, and class to attach it to.
+
+`servable protocol community list` exists but is not yet functional. It currently only checks
+that you're logged in and does nothing further; there is no confirmed registry backend behind it
+yet. `protocol test` is also a present-but-empty stub. Don't rely on either.
+
+### Related
+
+- [Protocol reference overview](../protocol/)
+- [`servable schema` command reference](./schema)
+- [`servable model` command reference](./model)
+
+---
+
+## $ servable schema
+
+Manages `servable.schema.json`, the app's committed schema artifact: a git-tracked snapshot of
+every protocol's schema, built and diffed entirely offline (no database involved). The running
+server reads this same file at boot to validate that what's deployed matches what was committed,
+and to enforce that a schema never regresses what an older, still-running pod may depend on
+during a rolling deploy.
+
+Every command in this group operates only on local files. Applying a schema to a live database,
+and refusing to boot when a build is incompatible, both happen in the server at launch, not here.
+
+### Build the artifact
+
+Compiles every protocol's `schema.json` into `servable.schema.json`, carrying forward whatever
+`compatibilityFloor` and `breakingChanges` were already committed.
+
+```bash
+servable schema build
+```
+
+Run this after adding or changing any protocol's `schema.json`, then commit the result.
+
+### Diff against what's committed
+
+Compares the committed artifact against what `schema build` would produce right now, and
+classifies every difference as one of:
+
+- **SAFE**: additive (new class, new field, widened permissions, a field newly marked
+  `deprecated`). Applies automatically; no gate needed.
+- **BREAKING, pre-deprecated**: a field or class being removed that was already marked
+  `deprecated: true` in a prior commit. Eligible for `schema contract`.
+- **BREAKING, not deprecated**: a type change, a newly-required field, an index change, or a
+  removal that was never deprecated first. Never applied automatically.
+
+```bash
+servable schema plan
+```
+
+#### Options
+
+```bash
+  --ci   Exit non-zero on any breaking change (for use in a build/CI step)   [boolean]
+```
+
+#### Example
+
+```bash
+servable schema plan --ci
+```
+
+Since this never touches a database, it's meant to run as a pre-push hook or a CI step. A
+breaking schema change gets caught in the PR itself, before it reaches a running server.
+
+### Apply safe changes
+
+Rebuilds the schema and rewrites `servable.schema.json`, but only if every change since the last
+commit is additive. Refuses outright if anything breaking is present.
+
+```bash
+servable schema apply
+```
+
+If this refuses, run `schema plan` to see what's breaking. A removal only becomes applyable once
+it's been marked `deprecated: true` in an earlier release. See `schema contract` below.
+
+### Remove a deprecated field or class
+
+The only command in this group allowed to remove anything, and the only one that advances
+`compatibilityFloor`. Requires the field/class being removed to have already been marked
+`deprecated: true` in a *previously committed* artifact, not the one you're building right now.
+
+```bash
+servable schema contract --reason="superseded by nature, deprecated since 2026-08"
+```
+
+#### Options
+
+```bash
+  --reason   Why this removal is safe now (recorded in the artifact for CI/review)   [string] [required]
+      --force    Allow removing a field/class that was never marked deprecated       [boolean]
+```
+
+`--force` bypasses the deprecation check for something known to be safe regardless (e.g. added and
+removed within the same release, never actually deployed). `--reason` is required either way:
+every contraction is recorded, never silent.
+
+Running this bumps `compatibilityFloor` by one. Any pod built against an older schema will refuse
+to boot rather than run against a database it doesn't know is missing fields it expects. See
+[Schema Migrations](../../guides/schema-migrations) for how that check works at launch.
+
+### Typical workflow
+
+1. Change a protocol's `schema.json` (add a field, or mark one `deprecated: true`).
+2. `servable schema plan` to see what changed and whether it's safe.
+3. `servable schema apply` (additive changes) or `servable schema contract --reason=...` (a
+   deprecated removal), then commit `servable.schema.json`.
+4. Deploy. The server refuses to boot if the artifact is missing, out of date, or has a lower
+   `compatibilityFloor` than what's already recorded for the database it's connecting to.
+
+### Related
+
+- [Schema Migrations guide](../../guides/schema-migrations)
+- [Reference: protocol schema](../protocol/schema)
+
+---
+
+## Config Adaptation
+
+This page describes how Servable normalizes and enriches `servableConfig` during startup.
+
+### Adaptation phases
+
+`adaptConfig()` is called twice during `launch()`:
+
+1. Before `launchSystem()` (the docker-compose bring-up).
+2. After it, with `live: true`, once `launchSystem()`'s own dynamically-detected connection
+   details (database URIs, ports reassigned by `getPortNear` when a declared port wasn't free)
+   have already been merged into `servableConfig.envs`.
+
+Both calls run the exact same `basic()` defaulting pass and the same
+`engine.setConfigurations({ servableConfig, live, engine })` hook, but `basic()` guards itself
+with `servableConfig.adaptedBasic`: the very first line returns immediately if that flag is
+already set, so its defaulting logic only actually executes once per process, on the first call.
+The second call exists so `engine.setConfigurations()` (which is *not* guarded the same way, since
+some engine hooks legitimately need to see the post-`launchSystem()` state) gets a chance to react
+to the live payload.
+
+### What gets normalized
+
+The basic adaptation layer (first call only) sets defaults for:
+
+- `dryRun` behavior and matcher function.
+- `distribution` settings.
+- `system.docker`, per-key, not "is the whole object missing": setting only
+  `system.docker.namespace` (see [protocol system](./protocol/system)) must not silently drop the
+  `enabled`/`environments` defaults just because the caller already provided *a* `system.docker`
+  object.
+- `protocols.local` resolution paths.
+- `rootProtocolPayload` defaults.
+- runtime `envs` values (server host/port/url, keys, verbosity, cache URIs), each via `envOr(process.env.X, default)`,
+  so an explicitly-set env var always wins over the hardcoded default.
+
+`utilsDatabaseURI` specifically uses `envOr(servableConfig.envs["utilsDatabaseURI"],
+process.env.SERVABLE_UTILS_DATABASE_URI)` rather than an unconditional assignment, preserving
+whatever's already in `servableConfig.envs` over the raw env var, the same preserve-if-set pattern
+used for `databaseURI` in the engine's own `setConfigurations`. This matters because
+`servableConfig.envs.utilsDatabaseURI` can already hold the correct, dynamically-detected value by
+the time anything reads it back out.
+
+It also marks `servableConfig.adaptedBasic = true` on completion, which is what makes the second
+call's `basic()` invocation a no-op.
+
+### Engine hook
+
+After basic normalization, engine-specific configuration is applied through:
+
+- `engine.setConfigurations({ servableConfig, live, engine })`
+
+This allows engine adapters to inject framework-runtime specifics without changing app declarations.
+
+### Practical implications
+
+1. Missing optional config fields can still produce runnable defaults.
+2. Environment values can override many runtime settings.
+3. Startup behavior can differ between initial and live adaptation phases.
+4. Debugging config issues should include both adaptation points in lifecycle.
+
+### Source of truth
+
+- server/src/lib/adaptConfig/index.js
+- server/src/lib/adaptConfig/basic.js
+- server/src/launch/index.js
+
+### Related
+
+- [Protocol system](./protocol/system)
+- [Runtime lifecycle](./lifecycle)
+- [Troubleshooting by lifecycle](./troubleshooting-lifecycle)
+- [Getting Started requirements](../gettingstarted/requirements)
+
+---
+
+## Object
+
+Object APIs represent model-level runtime operations implemented by the selected engine.
+
+### Typical capabilities
+
+- Create, update, delete, and serialize model instances.
+- Register lifecycle hooks on model events.
+- Access model metadata and class names.
+
+### End-user expectation
+
+Protocols relying on object behavior assume these operations exist and are consistent at runtime.
+
+If your app depends on a protocol using object hooks, verify engine support before rollout.
+
+### Best practices
+
+1. Keep object-level logic in models or protocols, not ad hoc route handlers.
+2. Use protocol methods for reusable behavior.
+3. Validate side effects in before/after hooks.
+
+### Related
+
+- [Engine query API](./query)
+- [Protocol class reference](../protocol/class)
+
+---
+
+## Engine Overview
+
+Engine APIs are the runtime bridge between Servable orchestration and framework-specific behavior.
+
+Servable computes schema and lifecycle flow; the engine executes concrete operations for objects, queries, cloud APIs, routes, jobs, and app server behavior.
+
+### Core responsibilities
+
+- Create and configure application server instances.
+- Expose object and query APIs.
+- Register cloud functions, routes, and jobs.
+- Launch runtime and migration paths.
+- Provide framework-native adapters used during wiring.
+
+### Parse engine shape in this repository
+
+The Parse engine adapter exports API domains such as:
+
+- Object
+- Query
+- Cloud
+- User
+- Role
+- File
+- Session
+- Schema
+- Config
+- Route
+- Jobs
+
+### Why this matters for app teams
+
+When you add or consume a protocol, behavior is only reliable if the selected engine supports the APIs required by that protocol.
+
+A successful app startup does not guarantee all protocol capabilities are available unless the engine surface matches usage.
+
+### Source of truth
+
+- engines/parse-server/src/register/index.js
+- engines/parse-server/src/createapp/index.js
+- server/src/launch/index.js
+
+### Related
+
+- [Object API](./object)
+- [Query API](./query)
+- [Runtime lifecycle](../lifecycle)
+
+---
+
+## Query
+
+Query APIs provide read-time filtering, sorting, pagination, and relation loading.
+
+### Typical capabilities
+
+- Filter by field/value and relation constraints.
+- Pagination and sorting.
+- Field selection and include behavior.
+- Secure execution options when required.
+
+### End-user expectation
+
+Protocols and routes often compose query builders to retrieve data efficiently.
+
+Use query constraints consistently across handlers to avoid drift between endpoints.
+
+### Best practices
+
+1. Keep reusable query logic in protocol helpers/services.
+2. Limit selected fields for performance-sensitive endpoints.
+3. Validate user-provided filters before execution.
+
+### Related
+
+- [Engine object API](./object)
+- [Guides add route](../../guides/routes/add)
+
+---
+
+## Runtime Lifecycle
+
+This page summarizes the observable startup lifecycle executed by Servable server orchestration.
+
+### Startup sequence
+
+1. Adapt incoming configuration.
+2. Create app via engine.
+3. Hydrate global Servable runtime.
+4. Build static schema.
+5. Validate schema.
+6. Launch system phase.
+7. Re-adapt config with system payload.
+8. Create HTTP server via engine.
+9. Start server runtime (migration/no-migration path).
+10. Run before-init phase.
+11. Register classes.
+12. Launch live server.
+13. Wire schema assets (functions, routes, jobs, services, triggers).
+14. Run seed phase.
+15. Run config phase.
+16. Run after-init phase.
+17. Register health-check routes.
+
+### Health behavior
+
+- Success path exposes `/health-check` and `/healthcheck`.
+- Failure path exposes `/health-check` with 500 status.
+- Both registrations go through `Route.define()`, which is async. See
+  [Route and job contracts](./route-job-contracts) for why an unawaited call here can make step 17
+  silently no-op even on an otherwise fully successful boot.
+
+### Practical debugging flow
+
+If startup fails:
+
+1. Check schema validation output first.
+2. Check engine startup/migration errors.
+3. Check wiring logs for routes/jobs/functions registration.
+4. Check seed/config failures.
+5. Query health endpoint after restart.
+
+### Source of truth
+
+- server/src/launch/index.js
+- server/src/launch/wireSchema/index.js
+- server/src/launch/registerClasses/index.js
+
+### Related
+
+- [Engine overview](./engine/overview)
+- [Protocol functions](./protocol/functions)
+- [Protocol triggers](./protocol/triggers)
+- [Cloud function contracts](./cloud-function-contracts)
+- [Config adaptation](./config-adaptation)
+
+---
+
+## Model Lifecycle
+
+This page describes the runtime lifecycle around model classes in Servable.
+
+### Class registration flow
+
+During launch, model classes are registered before schema wiring is completed.
+
+High-level flow:
+
+1. Protocol graph is computed in schema build.
+2. Class registration runs for protocol-managed classes.
+3. Trigger hooks are attached to class lifecycle events.
+4. Routes, functions, jobs, services, and live behavior are wired.
+
+### Trigger lifecycle for models
+
+Per class, current wired trigger operations are:
+
+- `beforeSave`
+- `afterSave`
+- `beforeDelete`
+- `afterDelete`
+
+`beforeFind` and `afterFind` are present in code comments but not active in default wiring.
+
+### Trigger execution order
+
+For each lifecycle event:
+
+1. Protocol trigger handler runs.
+2. Class-level trigger handler runs when present.
+
+For `afterSave`, current wiring executes trigger calls without awaiting completion.
+
+### Practical guidance
+
+1. Put reusable data invariants in protocol triggers.
+2. Keep class triggers focused on model-specific behavior.
+3. Avoid expensive operations inside `beforeSave`.
+4. Use jobs for heavy asynchronous side effects.
+
+### Source of truth
+
+- server/src/launch/registerClasses/index.js
+- server/src/launch/wireSchema/register/classes/registerTriggers/index.js
+- server/src/launch/wireSchema/index.js
+
+### Related
+
+- [Runtime lifecycle](../lifecycle)
+- [Protocol triggers](../protocol/triggers)
+- [Protocol schema](../protocol/schema)
+- [Jobs and background work](../../guides/jobs-and-background)
+
+---
+
+## Overview(Reference)
+
+:::info
+Servable is still experimental and its api may change in the future.
+:::
+
+![logo](/img/icon.svg)
+
+Reference pages provide exact technical details: commands, options, and API-level behavior.
+
+Use this section when you need precise syntax or implementation-level definitions.
+
+### In this section
+
+- Commands: Servable CLI command syntax and flags.
+- Lifecycle: startup and wiring order for runtime debugging.
+- Model lifecycle: class registration and trigger execution behavior.
+- Route and job contracts: runtime descriptor-level contract summary.
+- Cloud function contracts: naming and registration rules.
+- Trigger caveats: non-obvious runtime behavior and limits.
+- Config adaptation: startup defaulting and engine configuration hooks.
+- Engine: core runtime API domains such as object and query behavior.
+- Protocol: protocol package layout and declaration reference.
+- Packages: official package catalog and responsibilities.
+
+### Recommended usage
+
+1. Learn the flow in [Getting Started](../gettingstarted/requirements).
+2. Use [Guides](../guides/overview) for task walkthroughs.
+3. Return here for exact CLI/API specifics.
+
+### Key reference entry points
+
+- [CLI install command](./commands/install)
+- [CLI app command](./commands/app)
+- [Runtime lifecycle](./lifecycle)
+- [Model lifecycle](./model/lifecycle)
+- [Route and job contracts](./route-job-contracts)
+- [Troubleshooting by lifecycle](./troubleshooting-lifecycle)
+- [Cloud function contracts](./cloud-function-contracts)
+- [Trigger behavior caveats](./trigger-behavior-caveats)
+- [Config adaptation](./config-adaptation)
+- [Engine overview](./engine/overview)
+- [Engine object API](./engine/object)
+- [Protocol reference](./protocol)
+- [Packages](./packages)
+
+---
+
+## Packages
+
+import BashTabs from '@site/src/components/generic/bashTabs'
+import ProtocolWidget from '@site/src/components/domain/widgets/protocol.js'
+
+
+
+### [Servable Server](https://github.com/servable-community/servable-engine)
+
+The servable server is responsible for all the Servable related operations on a servable template project.
+It is available as an npm dependency.
+
+### [Servable Manifest](https://github.com/servable-community/servable-manifest)
+
+The Servable manifest is a utility that builds a protocol's manifest and documents it.
+It is available as an npm dependency.
+
+### [Servable Parse Server Adapter](https://github.com/servable-community/parse-server-engine)
+
+The Servable Parse Server Adapter is an example of a engine.
+
+### [Servable CLI (yeoman generator)](https://github.com/servable-community/generator-servable)
+
+The servable CLI is responsible for scaffolding and manipulating servable and protocol projects.
+
+It is available as an npm package. It uses under the hood:
+- the Servable server 
+- the Servable Protocols Registry API
+
+### [Servable Registry](https://servable.app)
+
+The servable protocols registry is a centralized  protocols repository.
+
+It is available at servable.app
+
+It serves a public api at api.servable.app
+
+### Servable Dashboard
+
+The servable dashboard is a fork of the Parse Dashboard aimed at providing the best Servable experience.
+
+It is available with the CLI when launching a full-fledged local app.
+
+### Servable Widgets
+
+Servable widgets are embeddable React components that can display a protocol for example.
+
+---
+
+## Class
+
+### Concept
+Allows to define a subclass for this protocol to use other protocols, as to conform to other object models.
+
+### Folder structure
+
+```bash
+├── class
+│   ├── index.js
+│   ├── protocols.js
+```
+
+- The **class** folder contains 
+    - the es6 models handled by the protocol.
+    - the protocols declaration.
+
+### Variant entry points
+None
+
+### Usage
+#### Declare a class
+
+```js
+export default ({ ParentClass }) => class TargetClass extends ParentClass {
+    disposableOrphans() {
+        const items = super.disposableOrphans ? super.disposableOrphans() : []
+        return [
+            ...items,
+            'wallet'
+        ]
+    }
+
+    disposableChildren() {
+        const items = super.disposableChildren ? super.disposableChildren() : []
+        return [
+            ...items,
+            'wallet'
+        ]
+    }
+}
+```
+#### Use protocols
+```js
+export default [
+    //protocolslist 
+]
+```
+[See declaring protocols](../../guides/use)
+
+### Example
+We want our protocol **walletable** to use disposableOrphans and disposableChildren to manage data consistency over deletion:
+
+class/index.js
+```js
+export default ({ ParentClass }) => class TargetClass extends ParentClass {   
+
+    disposableOrphans() {
+        const items = super.disposableOrphans ? super.disposableOrphans() : []
+        return [
+            ...items,
+            'wallet'
+        ]
+    }
+
+    disposableChildren() {
+        const items = super.disposableChildren ? super.disposableChildren() : []
+        return [
+            ...items,
+            'wallet'
+        ]
+    }
+}
+``` 
+
+class/protocols.js
+```js
+export default [
+    "disposableorphansable",
+    "disposablechildrenable"
+]
+```
+
+---
+
+## Models
+
+### Concept
+Contains the models logic handled by the protocol.
+
+### Folder structure
+
+```bash
+├── models
+│   ├── classA
+│   │   │   ├── class
+│   │   │   │   ├── index.js
+│   │   │   │   ├── protocols.js
+│   │   │   ├── functions
+│   │   │   │   ├── index.js
+│   │   │   ├── triggers
+│   │   │   │   ├── index.js
+```
+
+- The **class** folder contains 
+    - the es6 models handled by the protocol.
+    - the protocols declaration.
+- The **functions** folder contains cloud functions specific to the class
+- The **triggers** folder contains triggers functions
+
+### Variant entry points
+None
+
+### Usage
+#### Declare a class
+
+```js
+export default class ClassA extends Servable.App.Object {
+    constructor() {
+        super('ClassA')
+    }
+}
+```
+#### Use protocols
+```js
+export default [
+    //protocolslist 
+]
+```
+[See declaring protocols](../../guides/use)
+
+#### Use functions
+#### Use triggers
+
+### Example
+
+---
+
+## Config
+
+### Concept
+Servable configuration lets protocols and apps change runtime behavior without requiring direct code changes for each environment.
+
+Use configuration for values such as feature toggles, integration endpoints, limits, and policy switches.
+
+### Configuration model
+
+Configuration is usually organized as:
+
+- Entries: key/value settings.
+- Conditions: rules that control when entries apply.
+- Groups: logical grouping for related entries.
+
+### Implementation workflow
+
+1. Define configuration entries in protocol or app config files.
+2. Reference environment variables for deploy-specific values.
+3. Validate the resolved config during startup.
+4. Verify behavior in staging before production rollout.
+
+### Safety guidance
+
+1. Never store secrets directly in documentation examples.
+2. Keep security-sensitive values in environment variables.
+3. Avoid silent defaults for critical behavior.
+4. Version and review configuration changes with code changes.
+
+### Common use cases
+
+- Restricting route behavior in production.
+- Controlling scheduler settings for jobs.
+- Tuning protocol-specific behavior by environment.
+
+### Related
+
+- [Seed](./seed)
+- [System](./system)
+- [Guides deployment](../../guides/deployment/kubernetes)
+
+---
+
+## Documentation
+
+Each protocol should be documented so app teams can adopt it safely.
+
+### Minimum documentation checklist
+
+1. Protocol purpose and target use cases.
+2. Required engine capabilities.
+3. Required parameters and defaults.
+4. Schema impact (classes, fields, indexes).
+5. Exposed routes/functions/jobs/services.
+6. Operational caveats and rollout notes.
+
+### Suggested format
+
+- Short summary.
+- Installation and declaration example.
+- Config parameters table.
+- Runtime behavior details.
+- Troubleshooting section.
+
+### Tooling
+
+Use [JSDoc](https://jsdoc.app) where applicable for code-level APIs, and keep user-facing behavior documented in this Docusaurus site.
+
+### Related
+
+- [Protocol index](./index)
+- [Service](./service)
+- [Jobs](./jobs)
+
+---
+
+## Functions
+
+Protocol functions are cloud-code operations registered during schema wiring.
+
+### What gets registered
+
+Each function export is registered through `Servable.App.Cloud.define`.
+
+Function names are resolved as:
+
+- `key` when no prefix is provided.
+- `prefix + CapitalizedKey` when a prefix is provided.
+
+### Registration behavior
+
+1. Functions are loaded from protocol files.
+2. Each named export is read as a candidate function.
+3. Registration uses `Servable.App.Cloud.define(name, handler)`.
+
+### Function contract
+
+A function handler is typically an async function receiving cloud request context and returning serializable payloads.
+
+Minimal pattern:
+
+```js
+export default async ({ params, user }) => {
+  return {
+    ok: true,
+    input: params,
+    userId: user ? user.id : null
+  }
+}
+```
+
+### Naming guidance
+
+1. Use stable function keys to avoid breaking clients.
+2. Keep prefixing predictable when namespacing protocol APIs.
+3. Document each function input/output shape in protocol docs.
+
+### Source of truth
+
+- server/src/launch/wireSchema/register/cloudCode/registerItem.js
+- server/src/launch/wireSchema/index.js
+
+### Related
+
+- [Routes](./routes)
+- [Service](./service)
+- [Triggers](./triggers)
+- [Cloud function contracts](../cloud-function-contracts)
+
+---
+
+## Index
+
+### Concept
+Contains the models logic handled by the protocol.
+
+### Folder structure
+
+```bash
+├── models
+│   ├── classA
+│   │   │   ├── class
+│   │   │   │   ├── index.js
+│   │   │   │   ├── protocols.js
+│   │   │   ├── functions
+│   │   │   │   ├── index.js
+│   │   │   ├── triggers
+│   │   │   │   ├── index.js
+```
+
+- The **class** folder contains 
+    - the es6 models handled by the protocol.
+    - the protocols declaration.
+- The **functions** folder contains cloud functions specific to the class
+- The **triggers** folder contains triggers functions
+
+### Usage
+#### Declare a class
+
+```js
+export default class ClassA extends Servable.App.Object {
+    constructor() {
+        super('ClassA')
+    }
+}
+```
+#### Use protocols
+```js
+export default [
+    //protocolslist 
+]
+```
+[See declaring protocols](../../guides/use)
+
+#### Use functions
+#### Use triggers
+
+### Example
+
+---
+
+## Jobs
+
+Protocol jobs are background tasks registered during startup and executed by the runtime scheduler.
+
+### When to use protocol jobs
+
+Use jobs for work that should not block request/response flows:
+
+- Scheduled maintenance tasks.
+- Notifications and asynchronous fan-out.
+- Periodic analytics aggregation.
+- Data consistency tasks across models.
+
+### Job descriptor shape
+
+Typical job declarations include:
+
+- `id`: unique protocol job identifier.
+- `schedule`: cron expression or interval.
+- `concurrency`: optional execution limit.
+- `handler`: async function executed by the scheduler.
+
+### Good practices
+
+1. Keep handlers idempotent.
+2. Log failures with enough context to replay safely.
+3. Use short, composable jobs over one large job.
+4. Validate external dependencies before scheduling heavy tasks.
+
+### Related
+
+- [Routes](./routes)
+- [Service](./service)
+- [Guides deployment](../../guides/deployment/kubernetes)
+- [Route and job contracts](../route-job-contracts)
+- [Troubleshooting by lifecycle](../troubleshooting-lifecycle)
+
+---
+
+## Lib
+
+`lib` contains protocol-internal helpers shared by class, triggers, functions, routes, and jobs.
+
+### Purpose
+
+Use `lib` for reusable logic that does not need to be exposed as public protocol API.
+
+Examples:
+
+- Payload normalization.
+- Shared validation helpers.
+- Query/filter builders.
+- Formatting and mapping helpers.
+
+### Structure recommendation
+
+```bash
+lib/
+	index.js
+	validation.js
+	mapping.js
+	query.js
+```
+
+### Rules of thumb
+
+1. Keep helpers pure when possible.
+2. Avoid direct side effects unless required by protocol behavior.
+3. Export only what protocol modules consume.
+
+### Related
+
+- [Service](./service)
+- [Functions](./functions)
+- [Triggers](./triggers)
+
+---
+
+## Routes
+
+Protocol routes define HTTP endpoints contributed by a protocol.
+
+### Route descriptor basics
+
+A route usually declares:
+
+- `method`: HTTP verb.
+- `path`: endpoint path.
+- `schema`: request/response validation contract.
+- `handler`: async implementation.
+
+Optional capabilities:
+
+- `rateLimiting`.
+- `cache`.
+- request parsing and middleware hooks.
+
+### Example (minimal)
+
+```js
+export default {
+	__servableType: 'route',
+	method: Servable.App.Route.Constants.Methods.GET,
+	path: '/status',
+	handler: async () => ({ ok: true })
+}
+```
+
+### Best practices
+
+1. Keep handlers thin and delegate reusable logic to services.
+2. Add schema contracts for query/body/response.
+3. Apply rate limits on public endpoints.
+4. Prefer protocol-level reuse over app-specific duplication.
+
+### Related
+
+- [Guides add route](../../guides/routes/add)
+- [Jobs](./jobs)
+- [Service](./service)
+- [Route and job contracts](../route-job-contracts)
+
+---
+
+## Schema
+
+Each protocol declares its structural contributions, classes it manages and fields it adds, in
+a single flat `schema.json` file at the protocol's root:
+
+```
+my-protocol/
+  schema.json
+  main.js
+  ...
+```
+
+### File shape
+
+```json
+{
+  "managed": {
+    "classes": [
+      {
+        "className": "RefCountry",
+        "fields": {
+          "name": { "type": "String" },
+          "code": { "type": "String" },
+          "region": { "type": "String", "deprecated": true }
+        }
+      }
+    ]
+  }
+}
+```
+
+- `managed.classes`: every class this protocol owns or contributes fields to.
+- Each field is `{ type, targetClass?, required?, deprecated? }`. `type` follows Parse's field
+  types (`String`, `Number`, `Boolean`, `Date`, `Array`, `Object`, `Pointer`, `Relation`, `ACL`,
+  `File`, `GeoPoint`, `Polygon`).
+- `deprecated: true` marks a field as safe to remove in a later release. See
+  [`servable schema contract`](../commands/schema). It's a no-op by itself; only combined with an
+  actual removal does it become consequential.
+
+### What schema can contribute
+
+- New classes managed by the protocol.
+- Fields added to target classes (its own or another protocol's).
+- Indexes and constraints.
+- Class-level permissions (CLPs).
+
+### From protocol schema to a committed artifact
+
+An app's own `servable.schema.json` (at the app root, not a protocol's) is compiled from every
+installed protocol's `schema.json` via `servable schema build`. That compiled, committed artifact,
+not any individual protocol's file, is what the running server validates at boot and what
+`servable schema plan`/`apply`/`contract` operate on. See
+[`servable schema` command reference](../commands/schema) for the full workflow.
+
+### Design principles
+
+1. Keep schema changes explicit and reviewable: one field/class change per commit where possible.
+2. Prefer additive changes; they apply with `servable schema apply` and need no coordination.
+3. Deprecate before removing: mark a field `deprecated: true` in one release, remove it with
+   `servable schema contract` in a later one.
+4. Run `servable schema plan` locally before committing, and `servable schema plan --ci` in CI.
+
+### Related
+
+- [`servable schema` command reference](../commands/schema)
+- [Guides: schema migrations](../../guides/schema-migrations)
+- [Seed](./seed)
+- [Configurations](./configurations)
+
+---
+
+## Seed
+
+Protocol seed defines initial data and setup records created during startup.
+
+### Purpose
+
+Use seed modules to bootstrap required data that your protocol needs to operate.
+
+Typical examples:
+
+- Default app-level records.
+- Baseline permission or role records.
+- Lookup data required by protocol routes or services.
+
+### Seed design rules
+
+1. Keep seed operations idempotent.
+2. Do not duplicate existing records.
+3. Avoid heavy one-time migrations in seed logic.
+4. Keep environment-specific values in configuration, not hardcoded in seed files.
+
+### Recommended implementation flow
+
+1. Add seed files to your protocol package.
+2. Start the app locally and confirm seed phase runs once as expected.
+3. Validate the created records through API or dashboard.
+4. Deploy to staging before production.
+
+### Troubleshooting
+
+If startup succeeds but expected records are missing:
+
+1. Check startup logs for seed phase execution.
+2. Verify protocol declaration on target model.
+3. Confirm seed conditions are satisfied.
+
+### Related
+
+- [Configurations](./configurations)
+- [Service](./service)
+- [Schema](./schema)
+
+---
+
+## Service
+
+Protocol services expose reusable business operations that can be called from routes, jobs, triggers, or other protocols.
+
+### Why services matter
+
+Services prevent duplicate business logic across handlers and keep protocols composable.
+
+### Service contract
+
+A service should define:
+
+- A unique service identifier.
+- A clear input payload contract.
+- A predictable output shape.
+- Error behavior that callers can handle.
+
+### Good practices
+
+1. Keep service IDs stable once published.
+2. Validate inputs at service boundaries.
+3. Make service responses explicit and documented.
+4. Keep route handlers thin by delegating core logic to services.
+
+### Calling services
+
+Services are commonly invoked through Servable service APIs so different protocol modules can reuse behavior without tight coupling.
+
+### Related
+
+- [Routes](./routes)
+- [Jobs](./jobs)
+- [Lib](./lib)
+
+---
+
+## System
+
+A protocol's `system/docker/docker-compose.yaml` declares the external services it needs: a
+database, cache, search index, whatever the protocol depends on. At launch, Servable merges every
+enabled protocol's compose file (plus the engine's and the server's own bundled ones, for the
+`app` protocol) into a single stack and brings it up with `docker-compose`.
+
+### Dynamic port assignment
+
+A service's declared host port (`published: 8097` in the compose file) is a *request*, not a
+guarantee. `getPortNear` reassigns it to the nearest free port if the declared one is already
+taken. This is normal, expected behavior (two worktrees' stacks running simultaneously being the
+most common cause), not a bug. A bare `- :8097` entry (no host port at all, meaning "let Docker
+pick something free") is left untouched; there's nothing to reassign.
+
+#### Getting the actual assigned port into your code
+
+If your protocol's own code needs to know the real, possibly-reassigned port (rather than
+connecting through a stable in-app config value), declare an `x-servable-envs` entry on the
+service mapping an env var name to the service's *container* port:
+
+```yaml
+services:
+  my-service:
+    ports:
+      - 8097:8087
+    x-servable-envs:
+      - "MY_SERVICE_URI": 8087
+```
+
+At launch, Servable sets `process.env.MY_SERVICE_URI = "localhost:<actual published port>"` for
+you. Without this, a hardcoded `.env` value pointing at the *declared* port will silently break the
+moment that port isn't free and a reassignment happens: connections will fail with `ECONNREFUSED`
+against the old port even though the container is up and healthy on a different one.
+
+### Per-worktree isolation: `system.docker.namespace`
+
+Set `servableConfig.system.docker.namespace` (a plain string) when multiple checkouts of the same
+app, most commonly git worktrees sharing the same compose template and `servableConfig.id`, need
+to run their docker stacks side by side without colliding. It affects:
+
+- The compose project name and network name.
+- Every service's explicit `container_name` (Docker treats a literal `container_name` as a single
+  global resource regardless of which project asked for it; ports and bind-mount volumes are
+  already unique per checkout without this, but a fixed `container_name` isn't).
+- The host-side execution/data directory (`.system/<namespace>/<protocol.id>/docker`).
+
+Leaving it unset is a complete no-op; existing single-checkout setups are unaffected. See
+[Config Adaptation](../config-adaptation) for how it interacts with the rest of `servableConfig`.
+
+### Recreating a container Docker itself already manages
+
+If you create or remove a service's container directly with `docker` (rather than letting Servable
+bring it up), Servable's own fingerprint check has no way to notice: it only detects changes to
+the *declared* compose config, not to what Docker is actually running. A container you touched
+manually won't get re-adopted on the next launch until its target compose file
+(`.system/<namespace?>/<protocol.id>/docker/docker-compose.yaml`) is deleted, forcing a fresh
+comparison and recreation.
+
+### What belongs in system vs config
+
+- `system`: infrastructure/runtime dependencies (the docker-compose stack above).
+- `config`: app-facing behavior toggles and values.
+
+### Operational guidance
+
+1. Keep system declarations explicit and environment agnostic.
+2. Use `x-servable-envs` for any port your code reads directly. Never hardcode a declared port.
+3. Validate system dependencies before enabling protocol features.
+
+### Related
+
+- [Config Adaptation](../config-adaptation)
+- [Configurations](./configurations)
+- [Seed](./seed)
+- [Deployment guide](../../guides/deployment/kubernetes)
+
+---
+
+## Triggers
+
+### Concept
+Triggers run model lifecycle logic during persistence events.
+
+Servable registers class triggers through the cloud adapter during class registration.
+
+Current wired operations:
+
+- `beforeSave`
+- `afterSave`
+- `beforeDelete`
+- `afterDelete`
+
+`beforeFind` and `afterFind` are present in code comments but currently not enabled in default wiring.
+
+### Folder structure
+
+```bash
+├── triggers
+│   ├── beforeSave.js
+│   ├── afterSave.js
+│   ├── beforeDelete.js
+│   ├── afterDelete.js
+│   ├── beforeFind.js
+│   ├── afterFind.js
+```
+
+- The **index.js** (or **triggers.js**) exports the triggers functions 
+
+### Variant entry points
+None
+
+### Usage
+
+Default argument for all triggers
+
+|  Argument | Description | Type | Default value |
+|:--|:--|:--|:--|:--|
+| request | The Parse Server request | Object | {} |
+
+Request content:
+|  Argument | Description | Type | Default value |
+|:--|:--|:--|:--|:--|
+| object | The Parse Server object | Object | {} |
+| original | The Parse Server object before it's modified | Object | {} |
+| context | The Parse Server context | Object | {} |
+
+#### Execution order
+
+For each wired lifecycle event:
+
+1. Protocol-level trigger handlers run first.
+2. Class-level trigger handlers run next when present.
+
+For `afterSave`, handlers are invoked without awaiting completion in current wiring logic.
+
+#### Before save
+
+```js
+export default async (props) => {
+    const { request } = props
+    const { object } = request   
+}
+```
+
+#### After save
+
+```js
+export default async (props) => {
+    const { request } = props
+    const { object } = request   
+}
+```
+
+#### Before delete
+
+```js
+export default async (props) => {
+    const { request } = props
+    const { object } = request   
+}
+```
+
+#### After delete
+
+```js
+export default async (props) => {
+    const { request } = props
+    const { object } = request   
+}
+```
+
+### Error handling
+
+- Trigger errors are caught and logged with class and lifecycle labels.
+- Errors are logged but do not always stop subsequent lifecycle handlers.
+
+### Example
+
+The *disposablechildrenable* protocol 
+
+```js
+import _ from 'underscore'
+//afterSave.js
+export default async ({ request }) => {
+    const { object, original, context } = request
+
+    if (!object || !object.disposableChildren) {
+        return
+    }
+    const { dirtyKeys } = context
+    if (!dirtyKeys || !dirtyKeys.length) {
+        return
+    }
+
+    const items = object.disposableChildren()
+    if (!items || !items.length) {
+        return
+    }
+
+    const candidates = _.intersection(items, dirtyKeys)
+    if (!candidates || !candidates.length) {
+        return
+    }
+
+    await Promise.all(candidates.map(key => handleItem({ object, original, key })))
+}
+
+const handleItem = async ({ object, original, key }) => {
+    if (!original) {
+        return
+    }
+
+    const previous = original.get(key)
+    const current = object.get(key)
+
+    if (Array.isArray(previous) || Array.isArray(current)) {
+        return handleArray({ previous, current })
+    }
+
+    const isFile = isFieldFile(previous)
+      | isFieldFile(current)
+
+    if (!isFile) {
+        return handleItemAsObject({
+            previous,
+            current
+        })
+    }
+
+    return handleItemAsFile({
+        previous,
+        current
+    })
+
+}
+
+const handleArray = async ({ previous, current }) => {
+    const objects = missingObjectsBetweenArrays(previous, current)
+    //TODO: objects === 0 when [files]
+    if (!objects || !objects.length) {
+        return
+    }
+
+    if (isFieldFile(objects[0])) {
+        await Promise.all(objects.map(destroyItemAsFile))
+    } else {
+        await Promise.all(objects.map(destroyItemAsObject))
+    }
+}
+
+const handleItemAsObject = async ({ previous, current }) => {
+    const objects = missingObjectsBetweenArrays([previous], [current])
+    //TODO: objects === 0 when [files]
+    if (!objects || !objects.length) {
+        return
+    }
+
+    await Promise.all(objects.map(destroyItemAsObject))
+}
+
+const handleItemAsFile = async ({ previous, current }) => {
+    if (!previous) {
+        return
+    }
+
+    if (!current) {
+        return destroyItemAsFile(previous)
+    }
+
+    if (previous.name() !== current.name()) {
+        return destroyItemAsFile(previous)
+    }
+}
+
+const missingObjectsBetweenArrays = (a, b) => {
+    if (!b || !b.length) {
+        return a
+    }
+
+    if (!a || !a.length) {
+        return []
+    }
+
+    let _a = a.filter(i => i)
+    let _b = b.filter(i => i)
+
+    const isFile = isFieldFile(_b[0])
+    if (isFile) {
+        return missingObjectsBetweenArraysFiles(_a, _b)
+    }
+    else {
+        return missingObjectsBetweenArraysObject(_a, _b)
+    }
+}
+
+const missingObjectsBetweenArraysFiles = (a, b) => {
+    const bUrls = b.map(i => i.url())
+
+    return a.map(i => {
+        //TODO: handle files
+        if (!bUrls.includes(i.url())) {
+            return i
+        }
+        return null
+    }).filter(a => a)
+}
+
+const missingObjectsBetweenArraysObject = (a, b) => {
+    const bIds = b.map(i => i.id)
+
+    return a.map(i => {
+        //TODO: handle files
+        if (!bIds.includes(i.id)) {
+            return i
+        }
+        return null
+    }).filter(a => a)
+}
+
+const isFieldFile = (item) => {
+
+    if (!item) {
+        return false
+    }
+    return (item._name && item._url)
+}
+
+const destroyItemAsObject = async i => {
+    try {
+        i.isDataAvailable && !i.isDataAvailable() && i.fetch && (await i.fetch({ useMasterKey: true })) // The check will skip files
+        await i.destroy({ useMasterKey: true })
+    } catch (e) {
+        console.error('Protocol > dependentChildren > destroyItem', e.message)
+    }
+}
+
+const destroyItemAsFile = async i => {
+    try {
+        await i.destroy({ useMasterKey: true })
+    } catch (e) {
+        console.error('Protocol > dependentChildren > destroyItem', e.message)
+    }
+}
+
+```
+
+### Source of truth
+
+- server/src/launch/wireSchema/register/classes/registerTriggers/index.js
+- server/src/launch/wireSchema/register/classes/registerTriggers/protocolTriggers/index.js
+
+### Related
+
+- [Functions](./functions)
+- [Routes](./routes)
+- [Jobs](./jobs)
+- [Trigger behavior caveats](../trigger-behavior-caveats)
+
+---
+
+## Route and Job Contracts
+
+This page summarizes the effective runtime contracts for protocol routes and jobs.
+
+### Route contract matrix
+
+| Field | Required | Meaning | Notes |
+|:--|:--|:--|:--|
+| `method` | Yes | HTTP method (`get`, `post`, `put`, `patch`, `delete`, `head`, `options`, `trace`, `function`) | Lowercased at registration |
+| `path` or `paths` or `url` | Yes | Route path(s) | Paths are sanitized and lowercased |
+| `handler` | Yes | Async handler | Executed through HTTP processing wrapper |
+| `prefix` | No | Route namespace | Prepended before path |
+| `schema` | No | Request/response contract | Used by route validation flow |
+| `cache` | No | Route-level caching | Applied to read-oriented methods |
+| `rateLimiting` | No | Request throttling | Supported across methods |
+| `request.type` | No | Body parser content type | Defaults to `application/json` |
+| `servableArguments` | No | Extra runtime args | Added by server wiring in common route flow |
+
+#### Route behavior notes
+
+1. Route paths are sanitized with path normalization and forced to lowercase.
+2. `function` method is mapped to `/function/{path}` style endpoints.
+3. Body parser raw mode is used for mutating verbs by default.
+4. **`Route.define()` is async and must be awaited by its caller.** It's an async function, so any
+   exception thrown inside it (building the cache middleware, the rate-limiter, anything before
+   the route is actually registered) becomes a rejected Promise, not a synchronous throw. If the
+   caller doesn't `await` the call, that rejection is never caught: the route silently never
+   registers, with no error logged anywhere, and requests to it 404 as if the path was never
+   declared. This is easy to miss because everything else about the boot can look completely
+   successful. Always `await Servable.App.Route.define(...)`.
+
+### Job contract matrix
+
+| Field | Required | Meaning | Notes |
+|:--|:--|:--|:--|
+| `id` | Yes | Job identifier | Used as scheduler job name |
+| `handler` | Yes | Async job handler | Executed by scheduler worker |
+| `cron` | Yes (current adapter behavior) | Schedule expression | Passed to recurring scheduler setup |
+| `priority` | No | Job priority | Defaults to `high` |
+| `concurrency` | No | Concurrent executions | Defaults to `10` |
+| `attributes` | No | Additional payload | Passed on scheduled invocation |
+
+#### Job behavior notes
+
+1. Jobs are registered through the engine job adapter.
+2. Scheduler storage depends on parse database URI configuration.
+3. Jobs are started and scheduled during startup wiring.
+
+### Source of truth
+
+- engines/parse-server/src/register/route/index.js
+- server/src/launch/wireSchema/register/routes/registerItem.js
+- engines/parse-server/src/register/jobs/index.js
+- server/src/launch/wireSchema/register/jobs/index.js
+
+### Related
+
+- [Protocol routes](./protocol/routes)
+- [Protocol jobs](./protocol/jobs)
+- [Troubleshooting by lifecycle](./troubleshooting-lifecycle)
+
+---
+
+## Trigger Behavior Caveats
+
+This page highlights runtime caveats for trigger execution and troubleshooting.
+
+### Current wiring caveats
+
+1. `beforeFind` and `afterFind` are not enabled in default trigger wiring.
+2. `afterSave` handlers are invoked without awaiting completion in current wiring.
+3. Trigger errors are caught and logged, which can reduce immediate visibility of failures.
+4. `_Session` class is skipped by trigger registration logic.
+
+### Why these caveats matter
+
+- Non-awaited `afterSave` can cause timing-sensitive side effects.
+- Disabled find triggers can surprise teams expecting query-time hooks.
+- Logged errors may not stop request flow, so failures can appear silent.
+
+### Recommended practices
+
+1. Keep `beforeSave` fast and deterministic.
+2. Move expensive side effects to jobs when possible.
+3. Add explicit logging and monitoring around `afterSave` operations.
+4. Test trigger-dependent behavior with integration tests.
+5. Do not assume find triggers are active unless wiring is explicitly changed.
+
+### Debug checklist
+
+1. Confirm trigger file is loaded and exported correctly.
+2. Confirm class trigger registration happened during startup.
+3. Check logs for class-specific trigger errors.
+4. Reproduce with minimal payload and compare before/after state.
+
+### Source of truth
+
+- server/src/launch/wireSchema/register/classes/registerTriggers/index.js
+- server/src/launch/wireSchema/register/classes/registerTriggers/protocolTriggers/index.js
+
+### Related
+
+- [Protocol triggers](./protocol/triggers)
+- [Troubleshooting by lifecycle](./troubleshooting-lifecycle)
+- [Route and job contracts](./route-job-contracts)
+
+---
+
+## Troubleshooting by Lifecycle
+
+Use this page to map runtime failures to the launch phase where they usually originate.
+
+### Phase-based troubleshooting map
+
+| Phase | Typical symptom | First checks |
+|:--|:--|:--|
+| Config adaptation | Startup exits early | Validate env vars and config shape |
+| Schema build | Missing models/fields | Confirm protocol declarations and schema files |
+| Schema validation | Launch throws validation errors | Review schema issues and field/index definitions |
+| System launch | Runtime dependencies fail | Check database/cache/service availability |
+| Server start | API not reachable | Check engine startup and mount configuration |
+| Class registration | Model hooks not firing | Confirm class registration logs |
+| Wiring routes/functions/jobs | Endpoints or jobs missing | Inspect wiring logs and protocol assets |
+| Seed phase | Missing baseline data | Check seed module conditions and idempotency |
+| Config phase | Wrong runtime behavior | Validate resolved config entries |
+| After init | Late startup regressions | Inspect protocol after-init operations |
+| Health route registration | `/health-check` 404s | Check that `Route.define()` was awaited (see [Route and job contracts](./route-job-contracts)); a fully successful boot can still silently fail to register the route if it wasn't |
+
+### Quick diagnosis sequence
+
+1. Read first startup error, not the last one.
+2. Map it to the phase table above.
+3. Inspect the corresponding source-of-truth file.
+4. Restart and verify health endpoint.
+
+### High-frequency failures
+
+1. Schema mismatch after protocol changes.
+2. Route missing because path/method contract invalid.
+3. Job not running because scheduler database configuration is missing.
+4. Trigger side effects failing silently in `afterSave` asynchronous handlers.
+
+### Source of truth
+
+- server/src/launch/index.js
+- server/src/launch/wireSchema/index.js
+- server/src/launch/wireSchema/register/routes/registerItem.js
+- server/src/launch/wireSchema/register/jobs/index.js
+- server/src/launch/wireSchema/register/classes/registerTriggers/index.js
+
+### Related
+
+- [Runtime lifecycle](./lifecycle)
+- [Route and job contracts](./route-job-contracts)
+- [Getting Started troubleshooting](../gettingstarted/troubleshooting)
+
+---
+
+## Roadmap
+
+| Protocol  | Description  | Target version  | Status |
+|---|---|---|---|
+| ** **  |   |   |  TODO |
+| ** ** |   |   |  TODO | 
+
+Submit a protocol request at yelounak@gmail.com
+
+---
+
+## Sponsorship
+
+![logo](/img/icon.svg)
+
+### We are looking for sponsors!
+Are you looking forward integrating Servable in your stack? 
+Contact us at servablecommunity@gmail.com
+Twitter/X: @servablecom
+
+Enjoy!
+
+---
+
+## 1. Bootstrap the blog app
+
+Create a new Servable app and start it locally.
+
+```bash
+servable app new --appName="MyBlog"
+cd my-blog
+yarn start
+```
+
+Then add a `BlogPost` model:
+
+```bash
+servable model add
+```
+
+Next, attach protocols to model declarations (for example `publishable`, `commentable`, and `taggable`) and restart the app.
+
+Continue with route creation in [Guides: add route](../../guides/routes/add).
+
+---
+
+## 2. Add routes and background behavior
+
+Now that your blog app boots with a `BlogPost` model, expose APIs and background processing.
+
+### Add routes
+
+Create route modules for read and write operations.
+
+Suggested endpoints:
+
+- `GET /blog/posts`
+- `POST /blog/posts`
+
+Use request/response schema contracts and keep handlers thin.
+
+### Delegate logic to services
+
+Move business logic (validation, transformations, side effects) to protocol services so it can be reused from jobs and triggers.
+
+### Add background jobs
+
+Use protocol jobs for non-blocking tasks, for example:
+
+- Refreshing feed metadata.
+- Sending notifications after publish.
+
+### Validate locally
+
+1. Restart the app.
+2. Test route responses.
+3. Confirm jobs are registered and executing.
+4. Check health endpoint remains stable under load.
+
+### Next
+
+- Review [Jobs and background work](../../guides/jobs-and-background).
+- Review [Schema migrations](../../guides/schema-migrations).
+
+---
+
+## Example
+
+import BashTabs from '@site/src/components/generic/bashTabs'
+
+
+
+This example will walk you through the building of a fully functional servable app.
+The source code is available at [https://github.com/servable-community/sample](https://github.com/servable-community/sample)
+
+We want to build a Servable service that:
+- Exposes a `BlogPost` model.
+- Registers reusable protocols on app and domain models.
+- Starts locally with generated defaults.
+
+### 1. Install the CLI
+
+### 2. Generate a new server
+
+Generate a new servable app by running the command:
+
+```bash
+mkdir myapp
+cd myapp
+servable app new --appName="MyApp"
+```
+
+You can type this command into Command Prompt, Powershell, Terminal, or any other integrated terminal of your code editor.
+
+You will be prompted to enter the basic informations needed to start a full-fledged servable app.
+
+The command also installs all necessary dependencies you need to run servable.
+
+### 3. Start your server
+
+Run the development server:
+
+The `cd` command changes the directory you're working with. In order to work with your newly created servable-parse app, you'll need to navigate the terminal there.
+
+The `yarn start` command builds your app locally and serves it through a development server, ready for you to view at http://localhost:1391/.
+
+You can now open the Servable dashboard at [http://localhost:4040](http://localhost:4040) and view your application data.
+
+:::info
+Note that contrarily to Parse Server Dashboard, Servable Dashboard does not permit class creation and modification via the UI. 
+This is to enforce the unique ability of Servable to predict schema and handle migrations automatically, thus avoiding environment discrepancies.
+The sole source of truth is the protocols designated schema files.
+:::
+
+### 4. Add a class
+
+At this point the app is fully functional but lacks any high level behavior.
+By default a Servable service contains the following models: *_User, _Session, _Installation, ServableApp*
+Add a custom class:
+
+```bash
+servable model add
+```
+
+:::note
+You can add a class manually by adding a class payload to `app/schema.json`, then running
+`servable schema build` to compile it into the committed artifact, see
+[Schema Migrations](../guides/schema-migrations).
+:::
+
+Restart the app to reflect the changes:
+
+### 5. Add protocols
+
+We want to make:
+- The app (thus servableApp class) able to send notifications and emails, have a reference for countries, locales and currency 
+Open the model protocol declaration file and add `notifiable` to the `static protocols` array for `ServableApp`.
+
+- The user (thus _User class) be followable, slugable, avatarable, localable, countryable
+Open the `_User` model protocol declaration and add `followable`.
+
+- A blog post (thus BlogPost class) to be commentable, reviewable, publishable, localable, countryable, slugable
+Add `publishable` to the `BlogPost` model protocol declaration.
+
+For full declaration examples, see [Use a protocol](../guides/use).
+At this point the app is useful for blogging.
+
+Restart the app to reflect the changes:
+
+## Uninstall
+
+---
+
+## Tutorials
+
+Tutorials are learning-oriented walkthroughs designed to help you build complete flows step by step.
+
+Use this section when you want guided practice, not just command reference.
+
+### Available tutorial tracks
+
+- Blog track: model setup, protocols, and route patterns.
+- Parse Server App track: bootstrapping and runtime checks.
+
+### Recommended path
+
+1. Complete [Quick Start](../quickstart).
+2. Follow one tutorial track end to end.
+3. Use [Reference](../reference/overview) for exact syntax.
+
+---
+
+## 1. Create a Parse-engine app
+
+Servable can run on a Parse Server engine through the generated project defaults.
+
+```bash
+servable app new --appName="MyParseApp"
+cd my-parse-app
+yarn start
+```
+
+Validate runtime after startup:
+
+1. Check `http://localhost:1387/servable`.
+2. Check `http://localhost:1387/health-check`.
+3. Open dashboard endpoints configured by your template.
+
+If startup fails, use [Getting Started troubleshooting](../../gettingstarted/troubleshooting).
+
+---
+
+## 2. Configure and verify runtime behavior
+
+After bootstrapping your Parse-engine app, configure it for real environments.
+
+### Configure environment values
+
+Set environment variables for runtime-sensitive settings, including:
+
+- App identity and port.
+- Database and service connectivity.
+- Protocol parameters used by routes/jobs.
+
+### Verify startup lifecycle
+
+On restart, check logs for:
+
+1. Configuration resolution.
+2. Schema validation and migration steps.
+3. Route/job/service registration.
+4. Health endpoint registration.
+
+### Smoke test checklist
+
+- `GET /health-check` returns success.
+- Core app routes are reachable.
+- Protocol-driven behavior appears as expected.
+
+### Production readiness tips
+
+1. Validate configuration in staging first.
+2. Roll out schema-sensitive changes gradually.
+3. Keep rollback plan ready for migration failures.
+
+### Next
+
+- Read [Deployment Kubernetes](../../guides/deployment/kubernetes).
+- Read [Getting Started troubleshooting](../../gettingstarted/troubleshooting).
+
+---
+
+## Overview(Parseserverapp)
+
+:::info
+Servable is still experimental and its api may change in the future.
+:::
+
+![logo](/img/icon.svg)
+
+**Servable** is a Node JS framework built for protocols running on your framework engine of choice. It provides a concise, easy to use and scalable template to get the best of protocols.
+
+The Servable framework at its core is a server template that uses the @servable/server to launch the different protocols applied to models and executed on the framework engine. 
+
+Main protocols:
+- Quick start and Plug & Play Node JS framework
+- Tailored for protocols
+- Schema based models and auto-migration 
+
+### Protocols
+Servable streamlines the server development by separating every "groupable" logic to be a protocol, so that it is organically extracted from the base code and possibly migrated into its own package. By doing so, Servable enforces a clear separation of concerns pattern out of the box. 
+
+Just like a docker image is made to be platform agnostic, a protocol is designed to be independant from the current environment it's being used in. A protocol might depend on other protocols, but it does not need to know which application it is used for, or call any of its API.
+
+The Servable object acts as a central orchestrator. It holds references to objects every protocol can access (for example the current express app, the Parse Server instance, etc). It can also be used to register special methods provided by protocols and that might be used by other protocols via Services.
