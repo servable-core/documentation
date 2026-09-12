@@ -1,4 +1,3 @@
-import React from 'react'
 import useDocusaurusContext from '@docusaurus/useDocusaurusContext'
 import Link from '@docusaurus/Link'
 // import LogoAnimated from '../logo/animated'
@@ -38,7 +37,7 @@ export default () => {
             {`${siteConfig.title}`} <i className='text-gray-600 dark:text-gray-400'> framework</i>
           </h1>
           <p className={`text-lg `}>
-            A <b>protocol driven</b> Node JS framework with different <b>Servable engines</b>. 
+            A <b>protocol driven</b> Node JS framework with interchangeable <b>Servable engines</b>. 
             It provides a concise, easy to use and scalable template to get the best of protocols. 
             Get ready to change the way you code your server!
             <br />
