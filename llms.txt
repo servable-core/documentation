@@ -6,15 +6,16 @@ This file contains links to documentation sections following the llmstxt.org sta
 
 ## Table of Contents
 
-- [Code of conduct](https://servable-core.github.io/documentation/docs/codeofconduct): ![logo](/img/icon.svg)
+- [Code of conduct](https://servable-core.github.io/documentation/docs/codeofconduct): The standards Servable's community, contributors, and maintainers hold each other to.
 - [Anatomy of a Servable service](https://servable-core.github.io/documentation/docs/concepts/anatomy): - The servable config is servable.config.js
-- [Terms, definitions and components](https://servable-core.github.io/documentation/docs/concepts/components): <Definitions noLink align={'left'}/>
+- [Servable vs Express, Fastify, NestJS, and plain Parse Server](https://servable-core.github.io/documentation/docs/concepts/comparison): Servable isn't a peer to Express or Fastify at the same layer. It's an orchestration layer built on top of Parse Server, which is itself built on E...
+- [Terms, definitions and components](https://servable-core.github.io/documentation/docs/concepts/components): Servable is built from three moving pieces: the server (the orchestrator), protocols (reusable units of backend capacity), and a framework engine (...
 - [What does an engine do?](https://servable-core.github.io/documentation/docs/concepts/engines): An engine is the runtime bridge between Servable and your underlying framework stack.
 - [How Servable server orchestrates a service?](https://servable-core.github.io/documentation/docs/concepts/orchestration): Servable takes the separation of concerns to the extreme by allowing every protocol to define a schema it needs to run. This schema has two main en...
-- [Philosophy](https://servable-core.github.io/documentation/docs/concepts/philosophy): ![logo](/img/icon.svg)
-- [What is a protocol?](https://servable-core.github.io/documentation/docs/concepts/protocols): ***An object oriented programming perspective*** <br />
-- [Contribution guide](https://servable-core.github.io/documentation/docs/contributing): ![logo](/img/icon.svg)
-- [FAQ](https://servable-core.github.io/documentation/docs/faq): ![logo](/img/icon.svg)
+- [Philosophy](https://servable-core.github.io/documentation/docs/concepts/philosophy): Servable's design draws directly from DRY, convention-over-configuration, the Liskov substitution principle, and domain-driven design, applied to o...
+- [What is a protocol?](https://servable-core.github.io/documentation/docs/concepts/protocols): A Servable protocol is a self-contained, reusable unit of backend capacity (comments, follows, notifications, and so on) that you attach to a class...
+- [Contribution guide](https://servable-core.github.io/documentation/docs/contributing): How to propose changes, report issues, and get a pull request merged into Servable.
+- [FAQ](https://servable-core.github.io/documentation/docs/faq): Answers to the questions that come up most when evaluating or starting with Servable.
 - [Installation](https://servable-core.github.io/documentation/docs/gettingstarted/installation): Install Servable CLI globally, then use it to scaffold a new app.
 - [Requirements](https://servable-core.github.io/documentation/docs/gettingstarted/requirements): Recommended for current Servable engine stack: Node.js 22.x LTS or higher.
 - [Troubleshooting](https://servable-core.github.io/documentation/docs/gettingstarted/troubleshooting): Use this page when your first app does not start as expected.
@@ -28,7 +29,7 @@ This file contains links to documentation sections following the llmstxt.org sta
 - [Schema Migrations](https://servable-core.github.io/documentation/docs/guides/schema-migrations): Servable tracks schema changes through a committed artifact, `servable.schema.json`, rather than
 - [Use a protocol](https://servable-core.github.io/documentation/docs/guides/use): ```js
 - [License](https://servable-core.github.io/documentation/docs/license): :::info
-- [Overview](https://servable-core.github.io/documentation/docs/overview): :::info
+- [Overview](https://servable-core.github.io/documentation/docs/overview): **Servable** is a protocol-oriented Node.js backend framework built on Parse Server. Instead of scattering a capability like comments, follows, or ...
 - [Quick Start 🚀](https://servable-core.github.io/documentation/docs/quickstart): This quick start will use the @servable/parse-server-engine engine.
 - [Cloud Function Contracts](https://servable-core.github.io/documentation/docs/reference/cloud-function-contracts): This page documents how protocol cloud functions are named and registered at runtime.
 - [$ servable app](https://servable-core.github.io/documentation/docs/reference/commands/app): $ servable app
@@ -43,7 +44,7 @@ This file contains links to documentation sections following the llmstxt.org sta
 - [Query](https://servable-core.github.io/documentation/docs/reference/engine/query): Query APIs provide read-time filtering, sorting, pagination, and relation loading.
 - [Runtime Lifecycle](https://servable-core.github.io/documentation/docs/reference/lifecycle): This page summarizes the observable startup lifecycle executed by Servable server orchestration.
 - [Model Lifecycle](https://servable-core.github.io/documentation/docs/reference/model/lifecycle): This page describes the runtime lifecycle around model classes in Servable.
-- [Overview](https://servable-core.github.io/documentation/docs/reference/overview): :::info
+- [Overview](https://servable-core.github.io/documentation/docs/reference/overview): Reference pages provide exact technical details: commands, options, and API-level behavior.
 - [Packages](https://servable-core.github.io/documentation/docs/reference/packages): The servable server is responsible for all the Servable related operations on a servable template project.
 - [Class](https://servable-core.github.io/documentation/docs/reference/protocol/class): ```bash
 - [Models](https://servable-core.github.io/documentation/docs/reference/protocol/classes): ```bash
@@ -63,11 +64,11 @@ This file contains links to documentation sections following the llmstxt.org sta
 - [Trigger Behavior Caveats](https://servable-core.github.io/documentation/docs/reference/trigger-behavior-caveats): This page highlights runtime caveats for trigger execution and troubleshooting.
 - [Troubleshooting by Lifecycle](https://servable-core.github.io/documentation/docs/reference/troubleshooting-lifecycle): Use this page to map runtime failures to the launch phase where they usually originate.
 - [Roadmap](https://servable-core.github.io/documentation/docs/roadmap): | Protocol  | Description  | Target version  | Status |
-- [Sponsorship](https://servable-core.github.io/documentation/docs/sponsorship): ![logo](/img/icon.svg)
+- [Sponsorship](https://servable-core.github.io/documentation/docs/sponsorship): How to support Servable's development, and what that support goes toward.
 - [1. Bootstrap the blog app](https://servable-core.github.io/documentation/docs/tutorials/blog/1): Create a new Servable app and start it locally.
 - [2. Add routes and background behavior](https://servable-core.github.io/documentation/docs/tutorials/blog/2): Now that your blog app boots with a `BlogPost` model, expose APIs and background processing.
 - [Example](https://servable-core.github.io/documentation/docs/tutorials/example): This example will walk you through the building of a fully functional servable app.
 - [Tutorials](https://servable-core.github.io/documentation/docs/tutorials/overview): Tutorials are learning-oriented walkthroughs designed to help you build complete flows step by step.
 - [1. Create a Parse-engine app](https://servable-core.github.io/documentation/docs/tutorials/parseserverapp/1): Servable can run on a Parse Server engine through the generated project defaults.
 - [2. Configure and verify runtime behavior](https://servable-core.github.io/documentation/docs/tutorials/parseserverapp/2): After bootstrapping your Parse-engine app, configure it for real environments.
-- [Overview](https://servable-core.github.io/documentation/docs/tutorials/parseserverapp/overview): :::info
+- [Overview](https://servable-core.github.io/documentation/docs/tutorials/parseserverapp/overview): **Servable** is a protocol-oriented Node.js backend framework built on Parse Server. It provides a concise, easy to use and scalable template to ge...

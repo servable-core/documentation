@@ -6,6 +6,8 @@ This file contains all documentation content in a single document following the 
 
 ## Code of conduct
 
+The standards Servable's community, contributors, and maintainers hold each other to.
+
 ![logo](/img/icon.svg)
 
 Contributor Covenant Code of Conduct
@@ -170,6 +172,42 @@ Optional
 
 ---
 
+## Servable vs Express, Fastify, NestJS, and plain Parse Server
+
+Servable isn't a peer to Express or Fastify at the same layer. It's an orchestration layer built on top of Parse Server, which is itself built on Express. If you're comparing "which Node.js framework should I start with," it helps to know where Servable actually sits before comparing feature lists.
+
+### Where each one operates
+
+| | Express | Fastify | NestJS | Parse Server (direct) | Servable |
+|:--|:--|:--|:--|:--|:--|
+| Layer | Minimal HTTP routing | Minimal HTTP routing (faster, schema-based validation) | Full application framework (DI, modules, decorators) on top of Express/Fastify | Full backend (data, auth, files, cloud code) on top of Express | Orchestration layer on top of Parse Server |
+| Data layer | Bring your own (Prisma, Mongoose, raw SQL, ...) | Bring your own | Bring your own (commonly TypeORM/Prisma) | Built in (Mongo or Postgres via Parse's Object/Query API) | Inherits Parse Server's |
+| Auth | Bring your own | Bring your own | Bring your own (Passport integration common) | Built in (users, sessions, ACLs, roles) | Inherits Parse Server's |
+| Admin dashboard | None | None | None | Parse Dashboard | Parse Dashboard |
+| Reusable capability model | Middleware, manual | Plugins, manual | Modules (per-project, not designed for cross-project npm reuse) | None; logic lives per-project in Cloud Code | Protocols: schema + triggers + routes + jobs, packaged and npm-publishable across models and projects |
+| Schema safety across a rolling deploy | Not applicable (no schema layer) | Not applicable | Whatever your ORM provides | Manual | Built in: a committed artifact, drift detection, and a compatibility floor that refuses to boot an incompatible build. See [Schema Migrations](../guides/schema-migrations) |
+| Maturity | Very mature, huge ecosystem | Mature | Mature | Mature | Experimental; API may still change |
+
+### When Servable is a good fit
+
+See [Philosophy: should you use Servable?](./philosophy#should-you-use-servable) for the full list. In short: you're already building on Parse Server (or open to it), and you want a capability written once (comments, follows, notifications) to be reusable across models, across projects, and shareable with other teams or the community as an ordinary npm package.
+
+### When plain Parse Server is the simpler choice
+
+If you're building a single project with no plan to reuse capabilities across models or projects, and you don't need protocol packaging or the schema-compatibility-floor safety net, Parse Server directly is less indirection. Servable's orchestration earns its keep specifically when reuse and schema safety across deploys start to matter; if neither does yet, you can always adopt it later.
+
+### When Express, Fastify, or NestJS is the better starting point
+
+If you don't want Parse Server's data model and conventions (its Object/Query/ACL API, its specific approach to users and sessions, its file storage model) and would rather choose your own ORM, auth library, and validation approach from scratch, start with one of these instead. Servable requires Parse Server as its only implemented engine today; adopting Servable means adopting Parse Server's conventions along with it, even though the engine API itself is designed to support others in the future.
+
+### Related
+
+- [Philosophy](./philosophy)
+- [What does an engine do?](./engines)
+- [Schema Migrations](../guides/schema-migrations)
+
+---
+
 ## Terms, definitions and components
 
 import SVGPlus from '@site/src/components/generic/svgplus'
@@ -178,6 +216,8 @@ import Manifest from '@site/src/components/project/manifest/actual'
 import Definitions from '@site/src/components/project/definitions/actual'
 
 
+
+Servable is built from three moving pieces: the server (the orchestrator), protocols (reusable units of backend capacity), and a framework engine (the adapter to the underlying runtime, currently Parse Server). The glossary and manifest below define every term used across this documentation.
 
 #### Servable server
 The Servable server acts as a central orchestrator and mediator. It computes the target schema, calls for a database migration if needed, loads protocols, registers seeding, configuration, routes, jobs, etc.
@@ -302,6 +342,8 @@ graph TD
 
 ## Philosophy
 
+Servable's design draws directly from DRY, convention-over-configuration, the Liskov substitution principle, and domain-driven design, applied to one specific goal: making a reusable unit of backend capacity (a protocol) as easy to compose and share as a class is to instantiate.
+
 ![logo](/img/icon.svg)
 
 ### Motivation - Why another framework?
@@ -366,6 +408,8 @@ Servable is likely a good fit for you if
 - You want to make that capacity available throughout your organization or publish it on the web
 - You are building a new platform from scratch but you don't want reinvent the wheel for the usual suspects: social interactions, versionning, data consistency over deletion
 
+See [Servable vs Express, Fastify, NestJS, and plain Parse Server](./comparison) for how this weighs against the alternatives, including when one of them is the better starting point instead.
+
 ---
 
 ## What is a protocol?
@@ -375,8 +419,7 @@ import SVGPlus from '@site/src/components/generic/svgplus'
 
 
 
-***An object oriented programming perspective*** 
-In many object oriented programming language a protocol describes what an unknown type of object can do. The same way a Servable protocol describes what an unknown database object can do. 
+A Servable protocol is a self-contained, reusable unit of backend capacity (comments, follows, notifications, and so on) that you attach to a class and reuse across every model that needs it, instead of rewriting the same tables, triggers, and security rules each time. The name borrows from object-oriented programming, where a protocol describes what an unknown type of object can do; a Servable protocol does the same for an unknown database object.
 
 A protocol always applies to a class, which is the Servable representation of a database table.
 
@@ -436,6 +479,8 @@ stateDiagram
 ---
 
 ## Contribution guide
+
+How to propose changes, report issues, and get a pull request merged into Servable.
 
 ![logo](/img/icon.svg)
 
@@ -549,6 +594,8 @@ It is important to note that you must have write permissions to the `main` branc
 ---
 
 ## FAQ
+
+Answers to the questions that come up most when evaluating or starting with Servable.
 
 ![logo](/img/icon.svg)
 
@@ -1543,22 +1590,25 @@ Servable is still experimental and its api may change in the future.
 
 ## Overview(Docs)
 
+**Servable** is a protocol-oriented Node.js backend framework built on Parse Server. Instead of scattering a capability like comments, follows, or notifications across controllers and models, you write it once as a protocol and attach it to any class that needs it, reusable across models, across projects, and publishable as its own npm package for other teams to use unmodified.
+
+Servable orchestrates the different protocols applied to your models and runs them on a framework engine (currently Parse Server, the only engine implemented today, even though the engine API itself is designed to support others). It does not handle any database or expose any API on its own; that's the engine's job. What Servable adds on top is schema computation from every protocol's declarations, a safe migration path (see [Schema Migrations](./guides/schema-migrations)), and lifecycle wiring (seeding, config, routes, jobs, triggers) so a well-built Servable project ends up being mostly your actual models and business logic.
+
 :::info
-Servable is still experimental and its api may change in the future.
+Servable is still experimental and its API may change in the future.
 :::
 
 ![logo](/img/icon.svg)
 
-**Servable** is a Node JS framework built for protocols running on your framework engine of choice. It provides a concise, easy to use and scalable template to get the best of protocols.
-
-The Servable framework at its core is a server template that uses the @servable/server to launch the different protocols applied to models and executed on the framework engine. It does not handle any database nor does it expose any API by itself. Instead it relies on a Framework engine that conforms to a set of APIs defined by Servable (Object, Query, Auth, ...). 
-
-Main protocols:
+Highlights:
 - Quick start and Plug & Play Node JS framework
-- Tailored for protocols
+- Reusable, composable, publishable protocols instead of scattered controllers/services
 - Community protocols
-- Schema based models and auto-migration 
+- Schema based models and auto-migration
 - Highly extensible
+
+New to Servable, or comparing it against Express, Fastify, NestJS, or plain Parse Server? See
+[Servable vs Express, Fastify, NestJS, and plain Parse Server](./concepts/comparison).
 
 ### Servable documentation
 This is the official documentation site for Servable. Content on this site is sourced in GitHub. For more information, see [Contributing to Servable](./contributing) documentation.
@@ -2307,15 +2357,15 @@ For `afterSave`, current wiring executes trigger calls without awaiting completi
 
 ## Overview(Reference)
 
-:::info
-Servable is still experimental and its api may change in the future.
-:::
-
-![logo](/img/icon.svg)
-
 Reference pages provide exact technical details: commands, options, and API-level behavior.
 
 Use this section when you need precise syntax or implementation-level definitions.
+
+:::info
+Servable is still experimental and its API may change in the future.
+:::
+
+![logo](/img/icon.svg)
 
 ### In this section
 
@@ -3529,6 +3579,8 @@ Submit a protocol request at yelounak@gmail.com
 
 ## Sponsorship
 
+How to support Servable's development, and what that support goes toward.
+
 ![logo](/img/icon.svg)
 
 ### We are looking for sponsors!
@@ -3770,20 +3822,20 @@ On restart, check logs for:
 
 ## Overview(Parseserverapp)
 
+**Servable** is a protocol-oriented Node.js backend framework built on Parse Server. It provides a concise, easy to use and scalable template to get the best of protocols.
+
+The Servable framework at its core is a server template that uses the @servable/server to launch the different protocols applied to models and executed on the framework engine.
+
 :::info
-Servable is still experimental and its api may change in the future.
+Servable is still experimental and its API may change in the future.
 :::
 
 ![logo](/img/icon.svg)
 
-**Servable** is a Node JS framework built for protocols running on your framework engine of choice. It provides a concise, easy to use and scalable template to get the best of protocols.
-
-The Servable framework at its core is a server template that uses the @servable/server to launch the different protocols applied to models and executed on the framework engine. 
-
-Main protocols:
+Highlights:
 - Quick start and Plug & Play Node JS framework
 - Tailored for protocols
-- Schema based models and auto-migration 
+- Schema based models and auto-migration
 
 ### Protocols
 Servable streamlines the server development by separating every "groupable" logic to be a protocol, so that it is organically extracted from the base code and possibly migrated into its own package. By doing so, Servable enforces a clear separation of concerns pattern out of the box. 
