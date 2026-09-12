@@ -1,0 +1,102 @@
+---
+sidebar_position: 11
+lastTouchedBy: claude-code
+lastTouchedAt: "2026-09-12T11:52:43Z"
+---
+
+# Authentication: sessions, cookies, and refresh tokens
+
+Servable supports two authentication mechanisms side by side: Parse's own session-token cookie
+(always available), and an opt-in access-token/refresh-token pair layered on top of it. Both are
+resolved by the same [route request handling](./route-handling) path, and a route's `requireUser`/
+`requireStepUp` options work identically regardless of which one authenticated the request.
+
+## Turning on access/refresh tokens
+
+Set `AUTH_JWT_SECRET` (generate with `openssl rand -hex 32`). Its presence is the single switch
+that enables the whole feature - there is deliberately **no default secret**: signing or verifying
+access tokens with a guessable fallback would be a silent auth bypass, so every function in this
+system (`mintSessionTokens`, `refreshSessionTokens`, the request resolver) treats a missing secret
+as "this deployment hasn't opted in" and falls back to the legacy session-cookie-only path, rather
+than failing closed for everyone.
+
+```bash
+AUTH_JWT_SECRET=<openssl rand -hex 32>
+AUTH_ACCESS_TOKEN_TTL_SECONDS=3600            # default: 1 hour
+AUTH_REFRESH_TOKEN_TTL_SECONDS=2592000        # default: 30 days
+AUTH_REFRESH_TOKEN_TTL_REMEMBER_ME_SECONDS=7776000  # default: 90 days
+AUTH_DEVICE_BINDING_ENABLED=1                 # default on; '0' disables
+AUTH_STEP_UP_FRESHNESS_SECONDS=300            # default: 5 minutes
+```
+
+## How a request is authenticated
+
+`userResolver` (called for every route, feeding `requireUser`/`requireStepUp`) checks, in order:
+
+1. **`Authorization: Bearer <token>`** - only if `AUTH_JWT_SECRET` is set. The token is a
+   hand-rolled HMAC-SHA256 JWT (`{ sub: userId, sid: sessionId, exp, iat }`, no external JWT
+   dependency - this system never needs asymmetric/JWKS verification, only symmetric signing).
+   Verified purely by signature and expiry; no database lookup is needed to trust it, only to
+   fetch the actual `_User` object by `sub`. If the token is valid but the user no longer exists,
+   this falls through to the legacy check below rather than failing the whole request.
+2. **The `x-servable-session-token` value** - from a custom header, then `req.cookies`, then a raw
+   `Cookie` header parse, in that priority order. Looked up against `_Session` (must be
+   non-expired), same as any Parse app.
+
+Either path stamps `user._authSessionId` (transient, request-scoped, never persisted) with the
+`_Session` id that authenticated the request - this is what lets `requireStepUp` check freshness
+against the *specific* session without a second lookup.
+
+## Minting and refreshing the pair
+
+`Servable.App.User.mintSessionTokens({ user, sessionToken, response, rememberMe, cookieDomain,
+exposeRefreshToken })` - called after a normal Parse login (`logIn`/`logInWith`), **not** a
+replacement for it. It:
+
+- Generates a random refresh token (`crypto.randomBytes(32)`), stores only its SHA-256 hash on the
+  `_Session` (`refreshTokenHash`), never the raw value.
+- Sets the raw refresh token as an `httpOnly` cookie (`secure`/`sameSite: 'None'` in production,
+  relaxed in dev), `maxAge` matching `refreshTokenTTL` (`rememberMe` selects the 30-day vs 90-day
+  TTL).
+- Mints a short-lived access-token JWT for immediate use.
+- Returns `{ accessToken, refreshToken, expiresIn, tokenType: 'Bearer', refreshTokenExpiresIn }` -
+  `refreshToken` in the response body is redacted to the literal string `'exists'` unless
+  `exposeRefreshToken` is explicitly set (only for a verified custom-domain proxy that needs the
+  raw value to mint its own same-origin cookie, since a custom domain's own `httpOnly` cookie can
+  never be set directly from the platform domain's response - same cross-`eTLD+1` restriction as
+  the session cookie itself).
+
+`Servable.App.User.refreshSessionTokens({ refreshToken, response, cookieDomain, installationId,
+exposeRefreshToken })` exchanges a valid refresh token for a new access token **and rotates the
+refresh token in the same operation**:
+
+- The provided token is hashed and looked up directly against `_Session.refreshTokenHash` - no
+  session id needs to travel alongside the cookie.
+- On success, a brand new refresh token is generated and stored, replacing the old hash. Since only
+  the most recently issued hash is ever valid, **a stolen-and-later-replayed old refresh token
+  fails outright the moment the legitimate client refreshes even once** - there's no window where
+  both the old and new token work.
+- **Device binding** (`AUTH_DEVICE_BINDING_ENABLED`, on by default): if the caller sends
+  `installationId` and the session has one bound already, they must match or the refresh is
+  rejected (`401`, "bound to a different device"). This only enforces when *both* sides are
+  present - a session or request missing an installation id fails open rather than locking out a
+  legitimate user over incomplete data. It's real defense-in-depth (a leaked refresh token alone
+  isn't enough without the matching device cookie too), not equivalent to hardware-backed device
+  attestation - a full XSS compromise can read both values.
+- Failure modes are explicit thrown objects with real HTTP codes: `501` if
+  `AUTH_JWT_SECRET` isn't configured at all, `401` for no token / invalid token / expired token /
+  device mismatch.
+
+## Step-up authentication
+
+`Servable.App.User.checkStepUpFreshness({ user })` (used by `requireStepUp`, see
+[route handling](./route-handling)) checks `_Session.stepUpAt` against
+`AUTH_STEP_UP_FRESHNESS_SECONDS` (default 5 minutes) - freshness is tracked **per session, not per
+user**, so confirming step-up on one device never silently satisfies it for a different, possibly
+stolen session elsewhere. There's no session at all (no `_authSessionId` stamped, or the session
+lookup fails), or no `stepUpAt` ever recorded, both simply mean "not fresh" rather than an error.
+
+## Related
+
+- [Route request handling](./route-handling)
+- [Transactions](./transactions)

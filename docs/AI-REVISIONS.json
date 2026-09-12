@@ -204,6 +204,84 @@
       "timestamp": "2026-09-12T11:49:28Z",
       "action": "modified",
       "summary": "Added the new servable-core/vscode extension to the package catalog. Left the page's existing stale content (servable-community org links, CLI described as a yeoman generator - both no longer accurate) untouched since fixing those was out of scope for this change."
+    },
+    {
+      "file": "docs/reference/packages.mdx",
+      "timestamp": "2026-09-12T11:52:43Z",
+      "action": "modified",
+      "summary": "Fixed the stale content flagged in the entry above: servable-community org links corrected to the actual servable-core repos, and the CLI's 'yeoman generator' description corrected (it's a plain Node CLI, not built on yeoman)."
+    },
+    {
+      "file": "docs/reference/commands/app.mdx",
+      "timestamp": "2026-09-12T11:52:43Z",
+      "action": "modified",
+      "summary": "Fixed --bridgeframeworkId, a flag name that doesn't exist in the actual command (the real field is --engineId), and corrected appDescription's documented default value. Found while cross-checking every CLI reference page against its real command source for an exhaustive documentation pass."
+    },
+    {
+      "file": "docs/reference/commands/auth.mdx",
+      "timestamp": "2026-09-12T11:52:43Z",
+      "action": "modified",
+      "summary": "Replaced fabricated option specs (a nonexistent -u shorthand, a copied-in-error '[default: 1387]' on a session token and a boolean confirm flag) with the real options read directly from login.js/logout.js/status.js."
+    },
+    {
+      "file": "docs/reference/commands/protocol.mdx",
+      "timestamp": "2026-09-12T11:52:43Z",
+      "action": "modified",
+      "summary": "Added the previously-undocumented 'protocol community submit' command and its real options."
+    },
+    {
+      "file": "docs/reference/tools.mdx",
+      "timestamp": "2026-09-12T11:52:43Z",
+      "action": "created",
+      "summary": "New, first-ever reference for the @servable/tools package's full public API: buildSchema, validateSchema, compileArtifact/normalizeArtifact/artifactHashOf, plan, the manifest system (extractProtocol/accessManifest/ManifestEnums), documentProtocol/generateGithubReadme, cleanProtocols, and Domain.Servable. Documents a real inverted-condition bug found in protocolApiVersion.js's version-dispatch logic."
+    },
+    {
+      "file": "docs/reference/route-handling.mdx",
+      "timestamp": "2026-09-12T11:52:43Z",
+      "action": "created",
+      "summary": "New deep-dive on route request handling: the difference between request.params (path) and params (query + auto-merged W3C trace context), requireUser/requireStepUp semantics and their distinct 209/449 error codes, the 500-not-520 exception handling gotcha (520 collides with Cloudflare's own synthetic error code), route-level cache (including a real behavioral inconsistency between the memory and Redis backends for a zero/falsy window), and rate limiting."
+    },
+    {
+      "file": "docs/reference/route-job-contracts.mdx",
+      "timestamp": "2026-09-12T11:52:43Z",
+      "action": "modified",
+      "summary": "Linked the new route-handling.mdx deep-dive."
+    },
+    {
+      "file": "docs/reference/transactions.mdx",
+      "timestamp": "2026-09-12T11:52:43Z",
+      "action": "created",
+      "summary": "New reference for Servable.App.Transaction: the one-write-kind-per-transaction v1 scope, the Parse Server engine's real MongoDB-session-backed implementation, its automatic standalone-MongoDB sequential fallback, and a subtle Parse pending-ops-leak bug the engine works around after a failed transactional batch."
+    },
+    {
+      "file": "docs/reference/protocol/seed.md",
+      "timestamp": "2026-09-12T11:52:43Z",
+      "action": "modified",
+      "summary": "Rewritten around the real manual-vs-auto seed mechanics: auto-seed's content-and-logic hash-based re-run detection (hashes transformer/validator function source, not just data), dependency-ordered seeding, and the SeedState persistence model - replacing a generic tool-agnostic checklist."
+    },
+    {
+      "file": "docs/reference/model/class.mdx",
+      "timestamp": "2026-09-12T11:52:43Z",
+      "action": "created",
+      "summary": "New reference for Servable.App.Object: the Proxy-based class-map resolution that closes a real Parse gap (new Parse.Object(className) doesn't apply protocol mixins; this makes it match fromJSON's behavior), and why it's implemented as a Proxy rather than Parse.Object.extend()."
+    },
+    {
+      "file": "docs/reference/model/lifecycle.mdx",
+      "timestamp": "2026-09-12T11:52:43Z",
+      "action": "modified",
+      "summary": "Deepened the trigger execution section with a real, previously-undocumented finding: afterSave's protocol- and class-level trigger calls are made without await inside a try/catch, so an error thrown there is a silent unhandled rejection, never reaching the '[Class ...] afterSave' error log - the same class of bug documented for Route.define() in route-job-contracts.mdx. Also documented the dual-casing trigger lookup and the _Session skip."
+    },
+    {
+      "file": "docs/reference/auth.mdx",
+      "timestamp": "2026-09-12T11:52:43Z",
+      "action": "created",
+      "summary": "New reference for the two-tier authentication system: the legacy session-token cookie, the opt-in AUTH_JWT_SECRET-gated access/refresh JWT pair, refresh token rotation with reuse detection, device binding, and per-session step-up freshness."
+    },
+    {
+      "file": "src/components/project/homePageHeader/index.js",
+      "timestamp": "2026-09-12T11:52:43Z",
+      "action": "modified",
+      "summary": "Restored a missing 'import React from react' that a parallel content edit (commit 2fec608) had accidentally dropped, which broke the entire site's SSR build (ReferenceError: React is not defined on the homepage). Found because a full local build is run before every push in this session; fixed since it blocked deploying everything else in this round."
     }
   ]
 }

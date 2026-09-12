@@ -1,3 +1,4 @@
+import React from 'react'
 import useDocusaurusContext from '@docusaurus/useDocusaurusContext'
 import Link from '@docusaurus/Link'
 // import LogoAnimated from '../logo/animated'

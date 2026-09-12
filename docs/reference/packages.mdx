@@ -9,31 +9,35 @@ import ProtocolWidget from '@site/src/components/domain/widgets/protocol.js'
 
 # Packages
 
-## [Servable Server](https://github.com/servable-community/servable-engine)
+## [Servable Server](https://github.com/servable-core/server)
 
-The servable server is responsible for all the Servable related operations on a servable template project.
-It is available as an npm dependency.
+`@servable/server` is the orchestrator: it computes the schema from every protocol applied to
+your models, runs the docker-compose system launch, and wires each protocol's lifecycle (seed,
+config, routes, jobs, triggers, services) on top of a framework engine.
 
-<BashTabs npm={`npm install -g @servable/server`} />
+<BashTabs npm={`npm install @servable/server`} />
 
-## [Servable Manifest](https://github.com/servable-community/servable-manifest)
+## [Servable Tools](https://github.com/servable-core/tools) {#servable-tools}
 
-The Servable manifest is a utility that builds a protocol's manifest and documents it.
-It is available as an npm dependency.
+`@servable/tools` is the schema/manifest engine used by both the server and the CLI: it builds and
+validates the schema from a protocol graph, compiles and diffs the committed schema artifact
+(`servable schema build`/`plan`/`apply`/`contract`), and extracts a protocol's manifest for
+generated documentation. See [`@servable/tools` reference](./tools) for the full API.
 
-<BashTabs npm={`npm install -g @servable/tools`} />
+<BashTabs npm={`npm install @servable/tools`} />
 
-## [Servable Parse Server Adapter](https://github.com/servable-community/parse-server-engine)
+## [Servable Parse Server Engine](https://github.com/servable-core/parse-server-engine)
 
-The Servable Parse Server Adapter is an example of a engine.
+The currently only implemented engine: the adapter that lets Servable orchestrate protocols on
+top of Parse Server, implementing Servable's engine API (Object, Query, Auth, Job, ...).
 <BashTabs npm={`npm install @servable/parse-server-engine`} />
 
-## [Servable CLI (yeoman generator)](https://github.com/servable-community/generator-servable)
+## [Servable CLI](https://github.com/servable-core/cli)
 
-The servable CLI is responsible for scaffolding and manipulating servable and protocol projects.
-
-It is available as an npm package. It uses under the hood:
-- the Servable server 
+The Servable CLI scaffolds and manipulates Servable apps and protocols. See
+[CLI command reference](./commands/install) for every command. It uses under the hood:
+- `@servable/server`
+- `@servable/tools`
 - the Servable Protocols Registry API
 
 <BashTabs npm={`npm install -g @servable/cli`} />

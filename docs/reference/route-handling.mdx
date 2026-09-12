@@ -1,0 +1,143 @@
+---
+sidebar_position: 2.5
+lastTouchedBy: claude-code
+lastTouchedAt: "2026-09-12T11:52:43Z"
+---
+
+# Route request handling: params, auth guards, cache, rate limiting, errors
+
+[Route and job contracts](./route-job-contracts) documents the fields a route declares. This page
+documents what actually happens to a request between Express receiving it and your `handler`
+being called - for both `method: 'get'`/`'post'`/etc HTTP routes and `method: 'function'` (Parse
+Cloud Function-style) routes, which share this exact same logic.
+
+## What your handler receives
+
+```js
+handler: async ({ user, request, params, response, next, native, ...servableArguments }) => {}
+```
+
+- **`request`**: a sanitized wrapper (`method, params, query, headers, url, socket, complete,
+  aborted, baseUrl, files, file, body, native`) - `request.params` here is the route's **path**
+  params (`/users/:id` → `{ id }`), and `request.query` is the raw query string.
+- **`params`**: **not** the same thing as `request.params`. This is built from the query string
+  (`buildParamsWithTraceContext`), with W3C trace-context fields merged in automatically: if the
+  request carries a `traceparent` and/or `baggage` header, `trace_id`/`span_id`/`traceparent`/
+  `baggage` are added to `params` (without overwriting same-named query values that were already
+  present). If you need path params, read `request.params`, not `params`.
+- **`user`**: resolved via a `userResolver` your app supplies through `servableArguments` (the
+  function passed at route registration); `undefined` if there's no valid session or no resolver.
+- **`native`**: the raw `{ request, response, next }` - the actual Express objects, for anything
+  the wrapper doesn't expose.
+- Whatever your `servableArguments` function returns is spread directly into the handler's props
+  alongside `user`/`request`/`params`/`response`/`next`/`native`.
+
+A truthy return value is sent as the response body with `response.status(200).send(result)`. If
+your handler already sent a response itself (e.g. streaming, custom status codes), return nothing.
+
+## `requireUser` and `requireStepUp`
+
+Both are options on the route definition, both are `false` by default, and they're checked
+independently, in this order:
+
+1. **`requireUser: true`** - if no `user` was resolved, throws `{ code: 209, message: "invalid
+   session token" }` before your handler ever runs.
+2. **`requireStepUp: true`** - only checked if a user *was* resolved (a route can't demand
+   step-up from a request that isn't even authenticated). Calls
+   `Servable.App.User.checkStepUpFreshness({ user })`; if it returns falsy, throws
+   `{ code: 449, message: "Step-up authentication required" }`.
+
+The two codes are deliberately different: **209** means "not logged in, redirect to login."
+**449** ("Retry With") means "you *are* logged in, but this specific action needs you to prove
+your identity again" (a fresh password/MFA prompt that then retries the same request) - a client
+needs to react very differently to each, so collapsing them into one error code would lose
+information the frontend actually needs.
+
+## Exception handling
+
+Any thrown value (`Error`, or a plain `{ code, message }` object - both work, since Servable
+routes are typically written to throw plain objects for expected error conditions) is caught and
+turned into:
+
+```json
+{ "error": "<message>" }
+```
+
+sent with `response.status(code).json(...)`. Rules:
+
+- `code` defaults to **500**, not the `520` used in some older code. `520` was changed
+  specifically because Cloudflare (and most CDN/proxy layers) treats HTTP 520 as *its own*
+  synthetic "unknown error from origin" status - a handler that threw a bare `Error` with no
+  `.code` produced a well-formed 520 response that then read, at the client, as a CDN-side
+  failure instead of an application error. This cost real debugging time chasing a
+  Cloudflare-side explanation for what was actually this fallback firing.
+- `message` defaults to `"An error occurred"` if the thrown value has none.
+- A `messageId` field is computed on the internal error object but is **not** included in the
+  JSON actually sent to the client - only `error` (the message string) is. If you need a
+  machine-readable error identifier reaching the client, don't rely on `messageId` as currently
+  wired.
+
+## Route-level cache
+
+```js
+cache: {
+  configurations: [
+    { storage: 'inMemory', window: 10 },
+    { storage: 'redis', window: 60, template: 'userExists' },
+  ]
+}
+```
+
+- `storage`: `'inMemory'`/`'memory'` or `'redis'` (case-insensitive). Anything else resolves to no
+  caching at all.
+- Multiple `configurations` entries let a route cache differently depending on the requester:
+  `template: 'userExists'` only applies that configuration when the request carries a session
+  token (falls through to the next matching configuration, or no cache, otherwise);
+  `'userDoesNotExist'` is the inverse. The first configuration with no `template` at all is the
+  fallback.
+- The cache key is the normalized request URL (query params sorted, and a fixed set of
+  tracing/correlation keys - `trace_id`, `span_id`, `traceparent`, `request_id`,
+  `correlation_id`, and a few aliases - stripped before hashing), plus the session token when a
+  `userExists`-templated configuration is in play. Two requests differing only by trace headers
+  or query-param order share the same cache entry.
+- Send `x-servable-reset-cache` (any truthy value) as a request header to bypass the cache for
+  that one request.
+- **`window` behaves differently between backends when it's `0` or otherwise falsy**: the
+  in-memory backend passes an `undefined` TTL to `memory-cache` in that case, which means *cache
+  forever, no expiration*. The Redis backend explicitly checks `ttlMs > 0` and, if not, **skips
+  caching entirely** for that response. The same `window: 0` config is "cache forever" on one
+  backend and "never cache" on the other - confirmed by reading both implementations directly,
+  not documented anywhere in code comments. Set an explicit positive `window` if you rely on
+  expiry, and don't assume the two backends behave the same at the edges.
+- The Redis backend lazily creates one shared client per process (from `process.env.APP_REDIS_URI`
+  unless overridden) and reuses it across every cached route; if Redis is unreachable, caching is
+  silently skipped (request proceeds uncached) rather than the request failing.
+
+## Rate limiting
+
+```js
+rateLimiting: {
+  type: 'fixedByIp',
+  params: {
+    limit: 100,      // default 100000
+    window: 1000,    // ms, default 100
+    message: 'Too many requests',
+    standardHeaders: true,  // RateLimit-* headers
+    legacyHeaders: true,    // X-RateLimit-* headers
+  }
+}
+```
+
+Only `type: 'fixedByIp'` is implemented today (built on `express-rate-limit`); any other `type`
+resolves to a no-op passthrough. `xForwardedForHeader` validation is deliberately disabled
+(`validate: { xForwardedForHeader: false }`) to avoid `express-rate-limit`'s own
+`ERR_ERL_UNEXPECTED_X_FORWARDED_FOR` throwing when a proxy sits in front of the app without the
+Express `trust proxy` setting matching it exactly - see the `express-rate-limit` docs linked in
+the source for the exact failure mode this works around.
+
+## Related
+
+- [Authentication: sessions, cookies, and refresh tokens](./auth)
+- [Route and job contracts](./route-job-contracts)
+- [Cloud Function Contracts](./cloud-function-contracts)
+- [Trigger behavior caveats](./trigger-behavior-caveats)

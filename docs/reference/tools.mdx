@@ -1,0 +1,191 @@
+---
+sidebar_position: 9
+lastTouchedBy: claude-code
+lastTouchedAt: "2026-09-12T11:52:43Z"
+---
+
+import BashTabs from '@site/src/components/generic/bashTabs'
+
+# `@servable/tools` reference
+
+`@servable/tools` is the schema and manifest engine shared by `@servable/server` (which calls it
+at every boot) and the CLI (which calls it for every `servable schema`/`protocol document`
+command). It has no runtime/HTTP concerns of its own: everything here is either pure computation
+over a protocol graph, or file-system reads under a protocol's own directory.
+
+<BashTabs npm={`npm install @servable/tools`} />
+
+```js
+import {
+  buildSchema, validateSchema,
+  compileArtifact, artifactHashOf, normalizeArtifact,
+  plan,
+  extractProtocol, accessManifest, ManifestEnums, ManifestEnumsV1_1_0,
+  documentProtocol, generateGithubReadme,
+  cleanProtocols,
+  Domain,
+} from '@servable/tools'
+```
+
+## Schema
+
+### `buildSchema({ servableConfig })`
+
+Walks `servableConfig.rootProtocolPayload` and every protocol it (transitively) declares, resolving
+each one's `schema.json` into a protocol graph. Returns:
+
+```ts
+{
+  protocols,        // every resolved protocol instance in the graph
+  protocolsExcerpt, // per-class summary of which protocols contributed which fields
+  appProtocol,      // the root 'app' protocol instance, with .schema.classes.all
+                     // holding every class's fully-merged schema
+  liveClasses,      // classes any protocol in the graph marks as "live" (LiveQuery-eligible)
+}
+```
+
+This is the expensive step (real disk I/O across every protocol in the graph, and recursive
+resolution of transitive protocol dependencies) - `@servable/server`'s `launch()` calls it once per
+boot and passes the result through rather than recomputing it. See
+[Config Adaptation](./config-adaptation) for where it sits in the launch sequence.
+
+### `validateSchema({ schema })`
+
+Takes a `buildSchema()` result and checks **protocol version compatibility**, not schema
+correctness or drift. Every protocol instance in the graph declares a `minimumCompatibleVersion`
+for the protocols it depends on; this walks the graph and flags any pair where a dependent's
+required minimum is higher than what's actually resolved:
+
+```ts
+{ isValid: true }
+// or
+{
+  isValid: false,
+  issues: [{ comparison, message }],
+  message: string, // all issues joined, arrow-prefixed
+}
+```
+
+This is unrelated to the compatibility-floor / drift check `@servable/server` performs against
+`servable.schema.json` at boot (see [Schema Migrations](../guides/schema-migrations)) - that's a
+different mechanism, checking the committed artifact against the database's recorded state, not
+protocol-to-protocol version constraints.
+
+### `compileArtifact({ servableConfig })` / `normalizeArtifact({ appProtocol, protocols })`
+
+Produces the committed artifact shape (`servable.schema.json`'s content) from a schema:
+
+```ts
+{
+  artifactVersion: 1,
+  generatedAt: "<ISO timestamp>",
+  hash: "<sha256 of classes only>",
+  classes: [...],           // every class's className/fields/indexes/classLevelPermissions,
+                             // sorted by className for stable diffing
+  protocolVersions: [...],  // every resolved protocol instance's id/version/minimumCompatibleVersion
+}
+```
+
+`compileArtifact` is the convenience wrapper: it calls `buildSchema()` itself, then
+`normalizeArtifact()`. Use `normalizeArtifact` directly when you already have a `buildSchema()`
+result (this is what the server does at boot, specifically to avoid running `buildSchema()` a
+second time just to check drift).
+
+`hash` covers `classes` only, deliberately excluding `protocolVersions` - confirmed during
+development that which protocol instances get resolved (and therefore what ends up in
+`protocolVersions`) can vary between two builds of byte-identical sources depending on unrelated
+import-order effects, which would make it unsuitable as part of a stable drift-detection hash.
+
+### `artifactHashOf(artifact)`
+
+Recomputes the same content-only hash from an already-built artifact's `classes` field (ignoring
+`generatedAt`). Used both to produce an artifact's own `hash` and, at boot, to compare a freshly
+compiled artifact's hash against the one committed to git.
+
+### `plan({ before, after })`
+
+Diffs two artifacts (typically the committed one against a freshly compiled one) and classifies
+every class/field/index/permission change as safe or breaking. This is what `servable schema
+plan`/`apply`/`contract` are built on - see the [`servable schema` command reference](./commands/schema)
+for the full SAFE/BREAKING/pre-deprecated classification and the CLI workflow around it.
+
+## Manifest
+
+The manifest system reads a protocol's own file tree (not its schema) into a structured,
+queryable form - it's what generated documentation is built from.
+
+### `extractProtocol({ path, dataTemplateType })`
+
+Walks a protocol's (or, with `dataTemplateType: 'class'`, a single class's) directory structure
+against a versioned template (`ManifestEnums.ProtocolEnum`/`ClassEnum`/`SchemaEnum` describe what
+files are expected where - beforeInit, afterInit, functions, triggers, seed, system/docker, and so
+on) and returns:
+
+```ts
+{ reference: {...}, tree: {...} }
+```
+
+`tree` is the structured result; `reference` is a lookup map `accessManifest` uses internally.
+Sets `global.Servable` to a lightweight stand-in (see `Domain.Servable` below) if it isn't already
+set, since a protocol's own files may reference `Servable.App.*` at import time even outside a
+running server.
+
+### `accessManifest({ path, item, type, variant, mimeType, formatData })`
+
+Given a protocol/class path and an item from `ManifestEnums` (e.g.
+`ManifestEnums.ProtocolEnum.Assets.Icon`), extracts (calling `extractProtocol` internally if not
+already extracted) and returns that specific item from the manifest tree - a single file's content,
+optionally filtered by `mimeType` or `variant` (e.g. the `@2x` icon specifically). Returns `null`
+if the item doesn't exist. This is what backs the "Terms, definitions and components" page's
+`<Definitions>`/`<Manifest>` live widgets on this site, and the `<ProtocolWidget>` component used
+throughout - both read real protocol files through this API rather than embedding static copies.
+
+### `ManifestEnums` / `ManifestEnumsV1_1_0`
+
+Exports `ProtocolEnum`, `ClassEnum`, `SchemaEnum`, and `DataTemplateType` - the vocabulary
+`extractProtocol`/`accessManifest` use to address specific parts of a protocol's structure (see
+the source for the full tree; both exports currently point at the same `1.0.0` enum module).
+
+## Document generation
+
+### `documentProtocol({ path, write })` / `generateGithubReadme({ path, write })`
+
+Both are **version-dispatching gateways**, not the generators themselves: they read the protocol's
+own `apiVersion` (from `manifest.json`/`index.json`/`module.json` at the protocol's root) and
+dynamically import the matching implementation from `document/<apiVersion>/all` or
+`document/<apiVersion>/generateGithubReadme`. This is how `@servable/tools` supports multiple
+manifest API versions (`1.0.0`, `1.1.0`) side by side without the caller needing to know which one
+a given protocol targets.
+
+:::caution
+The version resolution (`protocolApiVersion`) currently has an inverted condition: it returns
+`"1.0.0"` when the protocol's declared `apiVersion` **is** a valid semver string, and returns the
+raw (invalid) value through otherwise. In practice this means a protocol that properly declares
+e.g. `"apiVersion": "1.1.0"` is routed to the `1.0.0` generator rather than `1.1.0`. Confirmed by
+reading `src/lib/protocolApiVersion.js` directly; not yet filed as a fix.
+:::
+
+`servable protocol document` (see the [CLI command reference](./commands/protocol)) is a thin
+wrapper over `documentProtocol({ path, write: true })`.
+
+## `cleanProtocols(items)`
+
+Deduplicates an array of protocol-like objects by `.id`, preserving first-seen order. Items with no
+`id` at all are never deduplicated against each other (every one is kept) - only items that share
+the same truthy `id` are collapsed to the first occurrence.
+
+## `Domain.Servable`
+
+A minimal stand-in for the real `Servable` runtime class used by `@servable/server` - it exposes
+`Servable.App` (merged from `global.Parse` if present, plus tools' own lightweight `App` shape) and
+a no-op `hydrate()`. It exists so protocol files can be imported and introspected by CLI tooling
+(manifest extraction, schema building) without a real server or engine running, not as a
+substitute for the full runtime object a launched app actually gets.
+
+## Related
+
+- [`servable schema` command reference](./commands/schema)
+- [`servable protocol` command reference](./commands/protocol)
+- [Schema Migrations](../guides/schema-migrations)
+- [Protocol schema](./protocol/schema)
+- [Packages](./packages)

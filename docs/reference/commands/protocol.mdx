@@ -1,7 +1,7 @@
 ---
 sidebar_position: 4
 lastTouchedBy: claude-code
-lastTouchedAt: "2026-09-12T11:00:08Z"
+lastTouchedAt: "2026-09-12T11:52:43Z"
 ---
 
 # $ servable protocol
@@ -56,6 +56,21 @@ servable protocol community use
 
 Wires an existing protocol from Servable's community registry into an app, prompting for the
 protocol, target app, and class to attach it to.
+
+```bash
+servable protocol community submit
+```
+
+Requires being logged in ([`servable auth login`](./auth)). Publishes a protocol to the community
+registry.
+
+### Options
+```bash
+  --protocolPath          Protocol to submit                                      [string]
+  --registryUpdate        Update protocol in registry     [boolean] [default: false]
+  --registrySubmitMode    "create" or "update"     [string] [default: "create"]
+  --registryUniqueRef     Registry unique reference                               [string]
+```
 
 `servable protocol community list` exists but is not yet functional. It currently only checks
 that you're logged in and does nothing further; there is no confirmed registry backend behind it

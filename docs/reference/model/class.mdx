@@ -1,0 +1,52 @@
+---
+sidebar_position: 2
+lastTouchedBy: claude-code
+lastTouchedAt: "2026-09-12T11:52:43Z"
+---
+
+# Model class (`Servable.App.Object`)
+
+A Servable model is a class extending `Servable.App.Object`, which the Parse Server engine wires
+as a `Proxy` around `Parse.Object` rather than a subclass or wrapper function - specifically to
+close a real gap in how Parse itself resolves classes.
+
+## The gap it closes
+
+Parse has two ways to get an instance of a registered class, and only one of them actually applies
+protocol mixins:
+
+- `new Parse.Object('Publication')` - a plain `ParseObject`. The constructor only assigns
+  `this.className`; it never consults the subclass registry, so none of the protocol mixins
+  registered via `Parse.Object.registerSubclass` are present.
+- `ParseObject.fromJSON({...})` - resolves through the class map, mixins and all. This is the path
+  query results and `fetch()` go through.
+
+That asymmetry meant code had to save an object, then re-query it, just to get access to its own
+protocol methods ("save, then fetch it back to get the mixins") - an extra round trip that also
+discards correct in-memory state for a freshly-read copy, and a mistake that's easy to make since
+nothing warns you `x.someProtocolMethod is not a function` on a brand-new object is this specific
+cause.
+
+## What actually happens
+
+`new Servable.App.Object('ClassName', attrs)` looks up `ClassName` in Parse's own live class map;
+if a registered subclass exists (and isn't just `Parse.Object` itself), it constructs *that*
+subclass with no arguments, then applies `attrs` via `.set()` afterward - because every registered
+class in this codebase is a zero-arg ES class that hardcodes its own class name in its constructor
+(`constructor() { super('Publication') }`), so anything passed positionally would otherwise be
+silently dropped. If no subclass is registered yet (or the "subclass" is just `Parse.Object`),
+behavior falls through unchanged to Parse's own constructor - nothing is lost for an unregistered
+class name.
+
+This is implemented as a `Proxy`, not `Parse.Object.extend()`, on purpose: `extend()` ends with an
+unconditional class-map write, so calling it for a typo'd or not-yet-registered class name would
+silently register a fresh empty subclass and permanently pollute the registry. A `Proxy` only
+intercepts `construct`; every static (`extend`, `registerSubclass`, `saveAll`/`destroyAll` -
+including the transaction module's monkey-patched versions - `fromJSON`, `createWithoutData`, ...)
+and `instanceof` checks against subclass instances keep working exactly as they do on
+`Parse.Object` itself, since a Proxy forwards everything it doesn't explicitly intercept.
+
+## Related
+
+- [Model lifecycle](./lifecycle)
+- [Transactions](../transactions)

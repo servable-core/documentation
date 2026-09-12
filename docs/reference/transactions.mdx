@@ -1,0 +1,91 @@
+---
+sidebar_position: 10
+lastTouchedBy: claude-code
+lastTouchedAt: "2026-09-12T11:52:43Z"
+---
+
+# Transactions
+
+`Servable.App.Transaction` is an engine-agnostic taxonomy for grouping several writes into one
+atomic commit. `@servable/server` always wires *some* `Transaction` class (falling back to a base
+implementation that throws a clear "not implemented" error on `commit()`/`rollback()` if the
+engine doesn't provide its own), so `Servable.App.Transaction` is never `undefined`.
+
+## Opening and using a transaction
+
+```js
+const tx = new Servable.App.Transaction({ useMasterKey: true })
+
+await obj1.save({ status: 'done' }, { transaction: tx })
+await obj2.save({ status: 'done' }, { transaction: tx })
+
+const result = await tx.commit()
+// { token, writes, state: 'committed', mode }
+```
+
+- `options` passed to the constructor are engine-specific write options (e.g. `useMasterKey`)
+  applied once, to the whole committed batch, not repeated per call.
+- Two ways to attach a write to a transaction: pass the transaction instance as `{ transaction: tx
+  }` on `save()`/`destroy()`/`saveAll()`/`destroyAll()` (the normal path - the engine recognizes it
+  and defers the write instead of sending it), or call `tx.toWriteOptions(options)` for call sites
+  that don't go through an engine-patched write method (a raw REST/Cloud Code call) - it stamps
+  `context.servableTransactionToken` onto the options so the engine can still correlate the write.
+- `state` moves `open` → `committed` | `aborted` | `failed`. `failed` means `commit()` was
+  attempted and threw; the transaction is over at that point.
+
+## v1 scope: one write kind per transaction
+
+A single transaction may only contain saves, or only destroys, not both. Queuing a destroy on a
+transaction that already has a queued save (or vice versa) throws immediately, rather than
+silently running the two kinds as separate, non-atomic operations. This is a deliberate current
+limitation, not an oversight - an engine that can't guarantee atomicity across mixed write kinds
+must reject rather than fake it.
+
+Queuing the *same* object twice in one transaction is not an error - it's treated as one logical
+write (everything set on it between the two calls goes out together), matching how
+`Parse.Object.saveAll()` itself collapses duplicates. `writes` on the commit result reports writes
+actually sent, not calls enqueued.
+
+## How the Parse Server engine implements it
+
+`Parse.Object.saveAll(objects, { transaction: true })` sends one `POST /batch` request that
+Parse Server wraps in a real MongoDB session (`session.startTransaction()`), which requires MongoDB
+to be running as a **replica set** - a standalone `mongod` cannot commit a session transaction.
+
+### Standalone MongoDB fallback
+
+Rather than fail outright on a standalone MongoDB, the engine:
+
+1. Checks the actual server topology directly (a `hello` admin command, checking for a `setName`
+   field) - not the commit error, since a standalone-Mongo failure reaches the caller as a
+   generically sanitized Parse "Internal server error" (Parse Server deliberately doesn't leak
+   internal error text), indistinguishable by code/message alone from any other commit failure.
+2. If standalone is *confirmed*, falls back to sending every queued write **individually**
+   (`mode: 'sequential-fallback'` in the commit result) instead of failing - logging a warning that
+   names the fix (migrate to a replica set). This is the old, non-atomic behavior, used only when
+   real atomicity isn't available at all.
+3. Any other commit failure (validation, permissions, a real data error) is rethrown unchanged,
+   never masked as "just no replica set."
+
+The topology check is cached for the process lifetime (topology doesn't change without a restart).
+
+### A real, subtle bug this engine works around
+
+When the `/batch` HTTP request itself rejects (rather than returning 200 with per-item errors),
+Parse's own `Parse.Object.saveAll()` leaves an internal "pending operations" layer unbalanced on
+every object in that batch - confirmed live against a standalone Mongo: after one failed
+transactional batch, fields set on an instance stayed marked dirty forever, and every subsequent
+`save()` on that same instance resolved successfully while writing nothing. The engine measures
+each object's pending-ops depth before the batch and restores it after a failure, specifically to
+avoid this: a failed batch would otherwise permanently and silently break future writes to any
+object that was in it.
+
+## Rollback
+
+`rollback()` simply discards whatever was deferred and marks the transaction `aborted`; since
+nothing was ever sent to the database, there's no compensating action needed.
+
+## Related
+
+- [`@servable/tools` reference](./tools)
+- [Route request handling](./route-handling)

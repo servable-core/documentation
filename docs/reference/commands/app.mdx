@@ -1,5 +1,7 @@
 ---
 sidebar_position: 2
+lastTouchedBy: claude-code
+lastTouchedAt: "2026-09-12T11:52:43Z"
 ---
 
 # $ servable app
@@ -13,22 +15,33 @@ servable app new
 ### Options
 ```bash
   -n, --appName              App name                                                      [string] [default: "MyAppName"]
-      --appDescription       App description                                          [string] [default: "A Servable service"]
-      --bridgeframeworkId    Engine to use                  [string] [default: "@servable/parse-server-engine"]
+      --appDescription       App description                                             [string] [default: "A Servable app"]
+      --engineId             Engine to use, e.g. @servable/parse-server-engine                                    [string]
   -i, --installDependencies  Install dependencies                                                [boolean] [default: true]
-  -l, --license              License                                                             [string] [default: "MIT"]
+  -l, --license              License ("MIT", "Apache 2.0", ...)                                  [string] [default: "MIT"]
   -p, --packageManager       Package manager ('npm', 'yarn' or 'pnpm')                           [string] [default: "npm"]
   -g, --gitInit              Initialize a git repository                                         [boolean] [default: true]
   -d, --destination          Choose a destination                                                                 [string]
-      --appPort              App port                                                             [number] [default: 1387]  
+      --appPort              App port                                                             [number] [default: 1387]
 ```
+
+`--engineId` picks which package's engine adapter the scaffolded app imports and installs. There is
+currently one published engine, `@servable/parse-server-engine`, but the field is asked freely
+(no hardcoded default) rather than fixed to it, since this is exactly the extension point a second
+engine implementation would plug into.
 
 ### Example
 ```bash
-servable app new --appName='MyApp' --adapter='@servable/cli'
+servable app new --appName='MyApp' --engineId='@servable/parse-server-engine'
 ```
 
 ### Help
 ```bash
 servable app -h
 ```
+
+## Related
+
+- [Servable vs Express, Fastify, NestJS, and plain Parse Server](../../concepts/comparison)
+- [`servable protocol` command reference](./protocol)
+- [`servable model` command reference](./model)

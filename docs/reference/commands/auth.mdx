@@ -1,13 +1,18 @@
 ---
 sidebar_position: 1
+lastTouchedBy: claude-code
+lastTouchedAt: "2026-09-12T11:52:43Z"
 ---
 
 import BashTabs from '@site/src/components/generic/bashTabs'
 
 # $ servable auth
 
+Manages the CLI's stored session against the Servable registry (used by `protocol community
+use`/`submit`). Credentials are stored locally via the CLI's own store, keyed by the registry host.
+
 ## Status
-Checks authentication status with Servable server.
+Checks whether the CLI currently holds a stored session.
 ```bash
 servable auth status
 ```
@@ -20,50 +25,47 @@ N/A
 servable auth status
 ```
 
-### Help
-N/A
-
 ## Login
-Log into Servable server.
+Logs into the Servable registry and stores the resulting session.
 ```bash
 servable auth login
 ```
 
 ### Options
 ```bash
-      --registryUsername      Username                                                                            [string]
-  -u, --registryPassword      Password                                                                            [string]
-      --registrySessionToken                                                              [number] [default: 1387]  
+  --registryUsername       Username (stored locally once entered)   [string]
+  --registryPassword       Password                                 [string]
+  --registrySessionToken   Session token (stored locally once obtained)   [string]
 ```
+
+These are prompted interactively if not passed as flags; `registryUsername` and
+`registrySessionToken` are persisted to the local CLI store so subsequent commands (`auth status`,
+`protocol community use`/`submit`) don't need to log in again.
 
 ### Example
 ```bash
-servable auth login --registryUsername myemail@gmail.com --registryPassword XXXX-XXXX
+servable auth login --registryUsername myemail@gmail.com
 ```
-
-### Help
-```bash
-servable auth login -h
-```
-
 
 ## Logout
-Logout of Servable server.
+Clears the locally stored session.
 ```bash
 servable auth logout
 ```
 
 ### Options
 ```bash
-    --registryConfirmLogout  Logout of Servable                                                           [number] [default: 1387]  
+  --registryConfirmLogout   Confirm logout   [boolean] [default: false]
 ```
+
+Prompted as a confirmation if not passed; does nothing if you're not currently logged in. On
+confirmation it clears the stored username, password, and session token.
 
 ### Example
 ```bash
 servable auth logout
 ```
 
-### Help
-```bash
-servable auth logout -h
-```
+## Related
+
+- [`servable protocol` command reference](./protocol)

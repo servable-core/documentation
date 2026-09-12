@@ -1,7 +1,7 @@
 ---
 sidebar_position: 1
 lastTouchedBy: claude-code
-lastTouchedAt: "2026-09-12T11:00:08Z"
+lastTouchedAt: "2026-09-12T11:52:43Z"
 ---
 
 # Model Lifecycle
@@ -28,16 +28,36 @@ Per class, current wired trigger operations are:
 - `beforeDelete`
 - `afterDelete`
 
-`beforeFind` and `afterFind` are present in code comments but not active in default wiring.
+`beforeFind` and `afterFind` are present in code (commented out) but not active in default wiring.
+`_Session` is explicitly skipped entirely - no triggers are ever wired for it.
+
+Class-level trigger methods are looked up under both casings (`beforeSave` and `beforesave`,
+`afterDelete` and `afterdelete`, etc.) - either naming convention works.
 
 ## Trigger execution order
 
-For each lifecycle event:
+For each lifecycle event: the protocol-level trigger handler runs first, then the class-level
+trigger handler, when present.
 
-1. Protocol trigger handler runs.
-2. Class-level trigger handler runs when present.
+For `beforeSave`, `beforeDelete`, and `afterDelete`, both calls are properly `await`ed inside a
+`try`/`catch` that logs `[Class <name>] ⚠️ <event>` on failure - an error there is caught and
+visible.
 
-For `afterSave`, current wiring executes trigger calls without awaiting completion.
+**`afterSave` is different, and it matters**: both the protocol-level and class-level `afterSave`
+calls are made *without* `await`, still inside the same `try`/`catch` wrapper. Because the calls
+aren't awaited, a promise rejection from either one happens after that `try`/`catch` has already
+exited - it is never caught by it. Concretely: **an error thrown inside an `afterSave` trigger
+(protocol- or class-level) does not get logged by the `[Class <name>] ⚠️ afterSave` handler at
+all**; it becomes a silent unhandled promise rejection instead. This is the exact same class of gap
+documented in [Route and job contracts](../route-job-contracts) for `Route.define()` - an
+async function called without `await` inside a try/catch that therefore cannot catch what it
+throws. If an `afterSave` side effect needs to be reliable and observable on failure, don't assume
+this wiring's own `catch` will tell you when it breaks.
+
+The whole registration function itself is wrapped in one more try/catch that swallows
+`ERR_MODULE_NOT_FOUND` silently (no trigger module for this class is a normal, expected case) but
+logs any *other* error and continues - meaning a class whose trigger module fails to import for a
+different reason ends up with no triggers wired at all, with only a console error to notice it by.
 
 ## Practical guidance
 
@@ -54,7 +74,9 @@ For `afterSave`, current wiring executes trigger calls without awaiting completi
 
 ## Related
 
+- [Model class](./class)
 - [Runtime lifecycle](../lifecycle)
 - [Protocol triggers](../protocol/triggers)
 - [Protocol schema](../protocol/schema)
+- [Route and job contracts](../route-job-contracts)
 - [Jobs and background work](../../guides/jobs-and-background)
