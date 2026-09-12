@@ -14,7 +14,7 @@ The following is a set of guidelines for contributing to Servable and all projec
 
 ## Code of Conduct
 
-This project and everyone participating in it is governed by the [Servable Code of Conduct](codeofconduct.md). By participating, you are expected to uphold this code. Please report unacceptable behavior to the contact method in the [Code of Conduct](codeofconduct.md).
+This project and everyone participating in it is governed by the [Servable Code of Conduct](codeofconduct). By participating, you are expected to uphold this code. Please report unacceptable behavior to the contact method in the [Code of Conduct](codeofconduct).
 
 ## What should I know before I get started?
 

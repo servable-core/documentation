@@ -1,0 +1,51 @@
+---
+sidebar_position: 3
+---
+
+# Troubleshooting by Lifecycle
+
+Use this page to map runtime failures to the launch phase where they usually originate.
+
+## Phase-based troubleshooting map
+
+| Phase | Typical symptom | First checks |
+|:--|:--|:--|
+| Config adaptation | Startup exits early | Validate env vars and config shape |
+| Schema build | Missing models/fields | Confirm protocol declarations and schema files |
+| Schema validation | Launch throws validation errors | Review schema issues and field/index definitions |
+| System launch | Runtime dependencies fail | Check database/cache/service availability |
+| Server start | API not reachable | Check engine startup and mount configuration |
+| Class registration | Model hooks not firing | Confirm class registration logs |
+| Wiring routes/functions/jobs | Endpoints or jobs missing | Inspect wiring logs and protocol assets |
+| Seed phase | Missing baseline data | Check seed module conditions and idempotency |
+| Config phase | Wrong runtime behavior | Validate resolved config entries |
+| After init | Late startup regressions | Inspect protocol after-init operations |
+| Health route registration | `/health-check` fails | Verify startup completed successfully |
+
+## Quick diagnosis sequence
+
+1. Read first startup error, not the last one.
+2. Map it to the phase table above.
+3. Inspect the corresponding source-of-truth file.
+4. Restart and verify health endpoint.
+
+## High-frequency failures
+
+1. Schema mismatch after protocol changes.
+2. Route missing because path/method contract invalid.
+3. Job not running because scheduler database configuration is missing.
+4. Trigger side effects failing silently in `afterSave` asynchronous handlers.
+
+## Source of truth
+
+- server/src/launch/index.js
+- server/src/launch/wireSchema/index.js
+- server/src/launch/wireSchema/register/routes/registerItem.js
+- server/src/launch/wireSchema/register/jobs/index.js
+- server/src/launch/wireSchema/register/classes/registerTriggers/index.js
+
+## Related
+
+- [Runtime lifecycle](./lifecycle)
+- [Route and job contracts](./route-job-contracts)
+- [Getting Started troubleshooting](../gettingstarted/troubleshooting)

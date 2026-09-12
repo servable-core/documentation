@@ -5,7 +5,18 @@ sidebar_position: 5
 # Triggers
 
 ## Concept
-Contains the .
+Triggers run model lifecycle logic during persistence events.
+
+Servable registers class triggers through the cloud adapter during class registration.
+
+Current wired operations:
+
+- `beforeSave`
+- `afterSave`
+- `beforeDelete`
+- `afterDelete`
+
+`beforeFind` and `afterFind` are present in code comments but currently not enabled in default wiring.
 
 ## Folder structure
 
@@ -38,6 +49,15 @@ Request content:
 | object | The Parse Server object | Object | {} |
 | original | The Parse Server object before it's modified | Object | {} |
 | context | The Parse Server context | Object | {} |
+
+### Execution order
+
+For each wired lifecycle event:
+
+1. Protocol-level trigger handlers run first.
+2. Class-level trigger handlers run next when present.
+
+For `afterSave`, handlers are invoked without awaiting completion in current wiring logic.
 
 ### Before save
 
@@ -74,6 +94,12 @@ export default async (props) => {
     const { object } = request   
 }
 ```
+
+
+## Error handling
+
+- Trigger errors are caught and logged with class and lifecycle labels.
+- Errors are logged but do not always stop subsequent lifecycle handlers.
 
 
 ## Example
@@ -246,3 +272,15 @@ const destroyItemAsFile = async i => {
 }
 
 ```
+
+## Source of truth
+
+- server/src/launch/wireSchema/register/classes/registerTriggers/index.js
+- server/src/launch/wireSchema/register/classes/registerTriggers/protocolTriggers/index.js
+
+## Related
+
+- [Functions](./functions)
+- [Routes](./routes)
+- [Jobs](./jobs)
+- [Trigger behavior caveats](../trigger-behavior-caveats)

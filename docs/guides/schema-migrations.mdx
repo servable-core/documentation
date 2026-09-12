@@ -1,0 +1,42 @@
+---
+sidebar_position: 2
+---
+
+# Schema Migrations
+
+Schema changes in Servable should be treated as controlled runtime changes, not simple file edits.
+
+## When a migration is needed
+
+A migration-sensitive change includes:
+
+- Adding or removing fields.
+- Changing field types.
+- Updating indexes or constraints.
+- Enabling protocol features that add managed classes.
+
+## Safe rollout checklist
+
+1. Apply schema changes in a feature branch.
+2. Start locally and inspect startup/migration logs.
+3. Validate health endpoint after boot.
+4. Test read/write paths for changed models.
+5. Roll out to staging before production.
+
+## Production guidance
+
+- Prefer additive changes where possible.
+- Avoid simultaneous high-risk schema and runtime changes.
+- Keep rollback plan ready before deployment.
+
+## Common failure signals
+
+- Startup fails during schema validation.
+- Health endpoint stays in error state.
+- Routes start but model persistence fails.
+
+## Related
+
+- [Getting Started troubleshooting](../gettingstarted/troubleshooting)
+- [Reference protocol schema](../reference/protocol/schema)
+- [Deployment Kubernetes](./deployment/kubernetes)

@@ -4,3 +4,28 @@ sidebar_position: 2
 
 # Object
 
+Object APIs represent model-level runtime operations implemented by the selected engine.
+
+## Typical capabilities
+
+- Create, update, delete, and serialize model instances.
+- Register lifecycle hooks on model events.
+- Access model metadata and class names.
+
+## End-user expectation
+
+Protocols relying on object behavior assume these operations exist and are consistent at runtime.
+
+If your app depends on a protocol using object hooks, verify engine support before rollout.
+
+## Best practices
+
+1. Keep object-level logic in models or protocols, not ad hoc route handlers.
+2. Use protocol methods for reusable behavior.
+3. Validate side effects in before/after hooks.
+
+## Related
+
+- [Engine query API](./query)
+- [Protocol class reference](../protocol/class)
+

@@ -1,0 +1,57 @@
+---
+sidebar_position: 1
+---
+
+# Model Lifecycle
+
+This page describes the runtime lifecycle around model classes in Servable.
+
+## Class registration flow
+
+During launch, model classes are registered before schema wiring is completed.
+
+High-level flow:
+
+1. Protocol graph is computed in schema build.
+2. Class registration runs for protocol-managed classes.
+3. Trigger hooks are attached to class lifecycle events.
+4. Routes, functions, jobs, services, and live behavior are wired.
+
+## Trigger lifecycle for models
+
+Per class, current wired trigger operations are:
+
+- `beforeSave`
+- `afterSave`
+- `beforeDelete`
+- `afterDelete`
+
+`beforeFind` and `afterFind` are present in code comments but not active in default wiring.
+
+## Trigger execution order
+
+For each lifecycle event:
+
+1. Protocol trigger handler runs.
+2. Class-level trigger handler runs when present.
+
+For `afterSave`, current wiring executes trigger calls without awaiting completion.
+
+## Practical guidance
+
+1. Put reusable data invariants in protocol triggers.
+2. Keep class triggers focused on model-specific behavior.
+3. Avoid expensive operations inside `beforeSave`.
+4. Use jobs for heavy asynchronous side effects.
+
+## Source of truth
+
+- server/src/launch/registerClasses/index.js
+- server/src/launch/wireSchema/register/classes/registerTriggers/index.js
+- server/src/launch/wireSchema/index.js
+
+## Related
+
+- [Runtime lifecycle](../lifecycle)
+- [Protocol triggers](../protocol/triggers)
+- [Jobs and background work](../../guides/jobs-and-background)

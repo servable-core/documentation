@@ -1,0 +1,46 @@
+---
+sidebar_position: 5
+---
+
+# Trigger Behavior Caveats
+
+This page highlights runtime caveats for trigger execution and troubleshooting.
+
+## Current wiring caveats
+
+1. `beforeFind` and `afterFind` are not enabled in default trigger wiring.
+2. `afterSave` handlers are invoked without awaiting completion in current wiring.
+3. Trigger errors are caught and logged, which can reduce immediate visibility of failures.
+4. `_Session` class is skipped by trigger registration logic.
+
+## Why these caveats matter
+
+- Non-awaited `afterSave` can cause timing-sensitive side effects.
+- Disabled find triggers can surprise teams expecting query-time hooks.
+- Logged errors may not stop request flow, so failures can appear silent.
+
+## Recommended practices
+
+1. Keep `beforeSave` fast and deterministic.
+2. Move expensive side effects to jobs when possible.
+3. Add explicit logging and monitoring around `afterSave` operations.
+4. Test trigger-dependent behavior with integration tests.
+5. Do not assume find triggers are active unless wiring is explicitly changed.
+
+## Debug checklist
+
+1. Confirm trigger file is loaded and exported correctly.
+2. Confirm class trigger registration happened during startup.
+3. Check logs for class-specific trigger errors.
+4. Reproduce with minimal payload and compare before/after state.
+
+## Source of truth
+
+- server/src/launch/wireSchema/register/classes/registerTriggers/index.js
+- server/src/launch/wireSchema/register/classes/registerTriggers/protocolTriggers/index.js
+
+## Related
+
+- [Protocol triggers](./protocol/triggers)
+- [Troubleshooting by lifecycle](./troubleshooting-lifecycle)
+- [Route and job contracts](./route-job-contracts)

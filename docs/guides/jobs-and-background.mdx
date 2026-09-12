@@ -1,0 +1,39 @@
+---
+sidebar_position: 3
+---
+
+# Jobs and Background Work
+
+Background jobs let you run asynchronous or scheduled tasks outside request/response routes.
+
+## Typical use cases
+
+- Notifications and outbound integration calls.
+- Search index refreshes.
+- Cleanup and archival tasks.
+- Scheduled consistency checks.
+
+## Design rules
+
+1. Keep jobs idempotent.
+2. Ensure retries are safe.
+3. Keep payloads small and explicit.
+4. Log enough context to debug failed executions.
+
+## Operational checklist
+
+1. Verify scheduler/database requirements are configured.
+2. Confirm jobs are registered at startup.
+3. Observe first execution in staging.
+4. Add monitoring and alerting for failures.
+
+## Interaction with routes
+
+Routes should enqueue or trigger background tasks, not execute heavy work inline.
+This keeps APIs fast and resilient under load.
+
+## Related
+
+- [Reference protocol jobs](../reference/protocol/jobs)
+- [Reference protocol service](../reference/protocol/service)
+- [Guides add route](./routes/add)

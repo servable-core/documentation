@@ -4,3 +4,29 @@ sidebar_position: 2
 
 # Query
 
+Query APIs provide read-time filtering, sorting, pagination, and relation loading.
+
+## Typical capabilities
+
+- Filter by field/value and relation constraints.
+- Pagination and sorting.
+- Field selection and include behavior.
+- Secure execution options when required.
+
+## End-user expectation
+
+Protocols and routes often compose query builders to retrieve data efficiently.
+
+Use query constraints consistently across handlers to avoid drift between endpoints.
+
+## Best practices
+
+1. Keep reusable query logic in protocol helpers/services.
+2. Limit selected fields for performance-sensitive endpoints.
+3. Validate user-provided filters before execution.
+
+## Related
+
+- [Engine object API](./object)
+- [Guides add route](../../guides/routes/add)
+

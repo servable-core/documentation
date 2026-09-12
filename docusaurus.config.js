@@ -97,6 +97,7 @@ const config = {
       /** @type {import('@docusaurus/preset-classic').Options} */
       ({
         docs: {
+          disableVersioning: true,
           // lastVersion: 'current',
           sidebarPath: require.resolve('./sidebars.js'),
           // Please change this to your repo.
@@ -203,10 +204,6 @@ const config = {
             docId: 'reference/overview',
             position: 'left',
             label: 'Reference',
-          },
-          {
-            type: 'docsVersionDropdown',
-            position: 'right',
           },
           {
             type: 'doc',

@@ -1,0 +1,56 @@
+---
+sidebar_position: 6
+---
+
+# Config Adaptation
+
+This page describes how Servable normalizes and enriches `servableConfig` during startup.
+
+## Adaptation phases
+
+Config adaptation occurs in two places during launch:
+
+1. Early adaptation before app creation.
+2. Live adaptation after system launch payload is available.
+
+Both phases call the same adaptation entry and pass through engine configuration hooks.
+
+## What gets normalized
+
+The basic adaptation layer sets defaults for:
+
+- `dryRun` behavior and matcher function.
+- `distribution` settings.
+- `system.docker` defaults.
+- `protocols.local` resolution paths.
+- `rootProtocolPayload` defaults.
+- runtime `envs` values (server host/port/url, keys, verbosity, cache URIs).
+
+It also marks `servableConfig.adaptedBasic = true` to avoid duplicate basic adaptation.
+
+## Engine hook
+
+After basic normalization, engine-specific configuration is applied through:
+
+- `engine.setConfigurations({ servableConfig, live, engine })`
+
+This allows engine adapters to inject framework-runtime specifics without changing app declarations.
+
+## Practical implications
+
+1. Missing optional config fields can still produce runnable defaults.
+2. Environment values can override many runtime settings.
+3. Startup behavior can differ between initial and live adaptation phases.
+4. Debugging config issues should include both adaptation points in lifecycle.
+
+## Source of truth
+
+- server/src/lib/adaptConfig/index.js
+- server/src/lib/adaptConfig/basic.js
+- server/src/launch/index.js
+
+## Related
+
+- [Runtime lifecycle](./lifecycle)
+- [Troubleshooting by lifecycle](./troubleshooting-lifecycle)
+- [Getting Started requirements](../gettingstarted/requirements)

@@ -10,11 +10,13 @@ This example will walk you through the building of a fully functional servable a
 The source code is available at [https://github.com/servable-community/sample](https://github.com/servable-community/sample)
 
 We want to build a Servable service that:
-- #TODO
+- Exposes a `BlogPost` model.
+- Registers reusable protocols on app and domain models.
+- Starts locally with generated defaults.
 
-## 1. Install the generator
+## 1. Install the CLI
 
-<BashTabs npm={"npm install -g generator-servable"} />
+<BashTabs npm={"npm install -g @servable/cli"} />
 
 ## 2. Generate a new server
 
@@ -23,7 +25,7 @@ Generate a new servable app by running the command:
 ```bash
 mkdir myapp
 cd myapp
-yo servable -q -t app -n "MyApp"
+servable app new --appName="MyApp"
 ```
 
 You can type this command into Command Prompt, Powershell, Terminal, or any other integrated terminal of your code editor.
@@ -58,7 +60,7 @@ By default a Servable service contains the following models: *_User, _Session, _
 Add a custom class:
 
 ```bash
-yo servable -q -t class -n "BlogPost"
+servable model add
 ```
 
 :::note
@@ -72,20 +74,15 @@ Restart the app to reflect the changes:
 
 We want to make:
 - The app (thus servableApp class) able to send notifications and emails, have a reference for countries, locales and currency 
-```bash
-yo servable -q -t communityprotocol --useAppProtocol --targetClassName ServableApp --protocol notifiable
-```
+Open the model protocol declaration file and add `notifiable` to the `static protocols` array for `ServableApp`.
 
 - The user (thus _User class) be followable, slugable, avatarable, localable, countryable
-```bash
-yo servable -q -t communityprotocol --useAppProtocol --targetClassName _User --protocol notifiable
-```
+Open the `_User` model protocol declaration and add `followable`.
 
 - A blog post (thus BlogPost class) to be commentable, reviewable, publishable, localable, countryable, slugable
-We want to Add a community protocol to the ServableApp to give it 
-```bash
-yo servable -q -t communityprotocol --useAppProtocol --targetClassName BlogPost --protocol notifiable
-```
+Add `publishable` to the `BlogPost` model protocol declaration.
+
+For full declaration examples, see [Use a protocol](../guides/use).
 At this point the app is useful for blogging.
 
 Restart the app to reflect the changes:
@@ -94,4 +91,4 @@ Restart the app to reflect the changes:
 
 # Uninstall
 
-<BashTabs npm={"npm uninstall -g generator-servable"} />
+<BashTabs npm={"npm uninstall -g @servable/cli"} />

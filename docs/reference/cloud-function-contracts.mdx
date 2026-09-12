@@ -1,0 +1,63 @@
+---
+sidebar_position: 4
+---
+
+# Cloud Function Contracts
+
+This page documents how protocol cloud functions are named and registered at runtime.
+
+## Registration pipeline
+
+Cloud functions are wired during schema registration using this flow:
+
+1. Protocol function files are loaded.
+2. Each file export key is iterated.
+3. A function name is computed from `key` and optional `prefix`.
+4. Function is registered with `Servable.App.Cloud.define(name, handler)`.
+
+## Naming rules
+
+Function names are computed as:
+
+- no prefix: `name = key`
+- with prefix: `name = prefix + CapitalizeFirstLetter(key)`
+
+Examples:
+
+- `prefix = "blog"`, `key = "publish"` => `blogPublish`
+- no prefix, `key = "ping"` => `ping`
+
+## Handler contract
+
+A function handler is expected to be an async callable that accepts cloud request context and returns serializable data.
+
+Minimal pattern:
+
+```js
+export default async ({ params, user }) => {
+  return {
+    ok: true,
+    params,
+    userId: user ? user.id : null
+  }
+}
+```
+
+## Stability guidance
+
+1. Treat function names as public API once clients depend on them.
+2. Avoid renaming function keys without compatibility strategy.
+3. Keep prefixing deterministic and documented for each protocol.
+4. Keep payload and response shapes explicit.
+
+## Source of truth
+
+- server/src/launch/wireSchema/register/cloudCode/index.js
+- server/src/launch/wireSchema/register/cloudCode/registerFile.js
+- server/src/launch/wireSchema/register/cloudCode/registerItem.js
+
+## Related
+
+- [Protocol functions](./protocol/functions)
+- [Runtime lifecycle](./lifecycle)
+- [Troubleshooting by lifecycle](./troubleshooting-lifecycle)

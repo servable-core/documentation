@@ -4,52 +4,34 @@ sidebar_position: 3
 
 # Service
 
-Servable Automatic Seed is an easy way to seed Servable models.
+Protocol services expose reusable business operations that can be called from routes, jobs, triggers, or other protocols.
 
-Servable Automatic Seed was built from the ground up to respect the protocol lifecycle and separation of concerns. Every protocol can define config entries that drive its behaviour at runtime, including the app protocol. The config entries are defined along their conditions and groups in dedicated json files thus guaranteeing an environment agnostic deployment.
+## Why services matter
 
-Servable's unique manualable mechanism used for seeds (manualable protocol) allows an hybrid config. You can define initial config entries in json files and manually add new configs or update existing live. Both the updated and new entries will keep their values while new entries in the json files will be taken into account.
+Services prevent duplicate business logic across handlers and keep protocols composable.
 
-## Entries
+## Service contract
 
-Servable Config entries are 
-### Data types
+A service should define:
 
-## Conditions
+- A unique service identifier.
+- A clear input payload contract.
+- A predictable output shape.
+- Error behavior that callers can handle.
 
-Servable Config conditions are a set of rules that determine the actual config entry value a particular user will receive.
+## Good practices
 
-### Types
-#### Installation
-#### Installation
+1. Keep service IDs stable once published.
+2. Validate inputs at service boundaries.
+3. Make service responses explicit and documented.
+4. Keep route handlers thin by delegating core logic to services.
 
-## Groups
-Servable Config groups are a way to organise a set of entries.
+## Calling services
 
+Services are commonly invoked through Servable service APIs so different protocol modules can reuse behavior without tight coupling.
 
-## Implementation path
+## Related
 
-1. Add config entries in you protocol/config dedicated files: entries
-2. Run / Deploy your Servable service
-3. 
-
-## Policies and limits
-
-Note the following policies:
-
-- Don't use Servable Config to make app updates that should require a user's authorization. This could cause your app to be perceived as untrustworthy.
-- Don't store confidential data in Remote Config parameter keys or parameter values. It is possible to decode any parameter keys or values stored in the Remote Config settings for your project.
-- Don't attempt to circumvent the requirements of your app's target platform using Remote Config.
-
-Note the following limits:
-
-
-
-## Roadmap
-
-Servable Dashboard will include a dedicated UI for config entries, conditions and groups manipulation.
-
-
-
-Generator tasks
-- Generate client side defaults
+- [Routes](./routes)
+- [Jobs](./jobs)
+- [Lib](./lib)

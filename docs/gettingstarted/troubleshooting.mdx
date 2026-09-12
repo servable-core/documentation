@@ -1,10 +1,101 @@
+---
+sidebar_position: 3
+---
 
-# Troubleshooting 🐞
+# Troubleshooting
 
-### ...
-#### Situation
-...
-#### Solution
-...
-#### Explanation
-...
+Use this page when your first app does not start as expected.
+
+## 1. CLI command not found
+
+### Situation
+`servable: command not found` appears in your terminal.
+
+### Solution
+
+1. Install CLI globally:
+
+```bash
+npm install -g @servable/cli
+```
+
+2. Or run with npx:
+
+```bash
+npx @servable/cli app new --appName="MyApp"
+```
+
+### Explanation
+Your shell cannot find the global CLI binary, usually because the package is not installed globally or your PATH is not updated.
+
+## 2. Engine/runtime version error
+
+### Situation
+Startup fails with Node version or engine compatibility errors.
+
+### Solution
+
+1. Check your Node version:
+
+```bash
+node -v
+```
+
+2. Use Node.js 22.x LTS when running the Parse Server engine.
+3. Reinstall dependencies after switching Node versions:
+
+```bash
+rm -rf node_modules package-lock.json yarn.lock
+npm install
+```
+
+### Explanation
+Different packages can declare different minimum Node versions. Using a single supported runtime avoids hard-to-debug startup issues.
+
+## 3. App boots but routes are missing
+
+### Situation
+The server starts, but expected endpoints or protocol behavior are not available.
+
+### Solution
+
+1. Verify the protocol is declared on the target model.
+2. Restart the app after any schema or protocol declaration change.
+3. Check startup logs for schema validation, route registration, and hook registration messages.
+
+### Explanation
+In Servable, many routes/functions are registered by protocols during startup lifecycle phases. If declaration or startup wiring fails, endpoints can be absent even when process is alive.
+
+## 4. Health endpoint returns 500
+
+### Situation
+`/health-check` responds with HTTP 500.
+
+### Solution
+
+1. Inspect startup logs for the first error before health route registration.
+2. Validate environment variables used by your app configuration.
+3. Confirm database connectivity and engine configuration.
+
+### Explanation
+The health endpoint reflects startup state. A 500 usually means initialization failed in an earlier phase (configuration, schema, migration, or engine launch).
+
+## 5. Schema or migration failure after model changes
+
+### Situation
+App fails right after adding or modifying model/protocol schema.
+
+### Solution
+
+1. Re-check schema field names, types, and indexes.
+2. Ensure protocol parameters required by schema logic are present.
+3. Run in a staging or local environment first when changing schema-affecting behavior.
+
+### Explanation
+Servable computes and validates target schema at startup. Invalid schema contributions or incompatible changes will stop boot to avoid inconsistent runtime state.
+
+## Need more details?
+
+- Read [Getting Started requirements](./requirements)
+- Read [Guides overview](../guides/overview)
+- Read [Reference overview](../reference/overview)

@@ -4,52 +4,42 @@ sidebar_position: 3
 
 # Seed
 
-Servable Automatic Seed is an easy way to seed Servable models.
+Protocol seed defines initial data and setup records created during startup.
 
-Servable Automatic Seed was built from the ground up to respect the protocol lifecycle and separation of concerns. Every protocol can define config entries that drive its behaviour at runtime, including the app protocol. The config entries are defined along their conditions and groups in dedicated json files thus guaranteeing an environment agnostic deployment.
+## Purpose
 
-Servable's unique manualable mechanism used for seeds (manualable protocol) allows an hybrid config. You can define initial config entries in json files and manually add new configs or update existing live. Both the updated and new entries will keep their values while new entries in the json files will be taken into account.
+Use seed modules to bootstrap required data that your protocol needs to operate.
 
-## Entries
+Typical examples:
 
-Servable Config entries are 
-### Data types
+- Default app-level records.
+- Baseline permission or role records.
+- Lookup data required by protocol routes or services.
 
-## Conditions
+## Seed design rules
 
-Servable Config conditions are a set of rules that determine the actual config entry value a particular user will receive.
+1. Keep seed operations idempotent.
+2. Do not duplicate existing records.
+3. Avoid heavy one-time migrations in seed logic.
+4. Keep environment-specific values in configuration, not hardcoded in seed files.
 
-### Types
-#### Installation
-#### Installation
+## Recommended implementation flow
 
-## Groups
-Servable Config groups are a way to organise a set of entries.
+1. Add seed files to your protocol package.
+2. Start the app locally and confirm seed phase runs once as expected.
+3. Validate the created records through API or dashboard.
+4. Deploy to staging before production.
 
+## Troubleshooting
 
-## Implementation path
+If startup succeeds but expected records are missing:
 
-1. Add config entries in you protocol/config dedicated files: entries
-2. Run / Deploy your Servable service
-3. 
+1. Check startup logs for seed phase execution.
+2. Verify protocol declaration on target model.
+3. Confirm seed conditions are satisfied.
 
-## Policies and limits
+## Related
 
-Note the following policies:
-
-- Don't use Servable Config to make app updates that should require a user's authorization. This could cause your app to be perceived as untrustworthy.
-- Don't store confidential data in Remote Config parameter keys or parameter values. It is possible to decode any parameter keys or values stored in the Remote Config settings for your project.
-- Don't attempt to circumvent the requirements of your app's target platform using Remote Config.
-
-Note the following limits:
-
-
-
-## Roadmap
-
-Servable Dashboard will include a dedicated UI for config entries, conditions and groups manipulation.
-
-
-
-Generator tasks
-- Generate client side defaults
+- [Configurations](./configurations)
+- [Service](./service)
+- [Schema](./schema)

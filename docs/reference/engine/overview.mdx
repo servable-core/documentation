@@ -1,0 +1,51 @@
+---
+sidebar_position: 1
+---
+
+# Engine Overview
+
+Engine APIs are the runtime bridge between Servable orchestration and framework-specific behavior.
+
+Servable computes schema and lifecycle flow; the engine executes concrete operations for objects, queries, cloud APIs, routes, jobs, and app server behavior.
+
+## Core responsibilities
+
+- Create and configure application server instances.
+- Expose object and query APIs.
+- Register cloud functions, routes, and jobs.
+- Launch runtime and migration paths.
+- Provide framework-native adapters used during wiring.
+
+## Parse engine shape in this repository
+
+The Parse engine adapter exports API domains such as:
+
+- Object
+- Query
+- Cloud
+- User
+- Role
+- File
+- Session
+- Schema
+- Config
+- Route
+- Jobs
+
+## Why this matters for app teams
+
+When you add or consume a protocol, behavior is only reliable if the selected engine supports the APIs required by that protocol.
+
+A successful app startup does not guarantee all protocol capabilities are available unless the engine surface matches usage.
+
+## Source of truth
+
+- engines/parse-server/src/register/index.js
+- engines/parse-server/src/createapp/index.js
+- server/src/launch/index.js
+
+## Related
+
+- [Object API](./object)
+- [Query API](./query)
+- [Runtime lifecycle](../lifecycle)

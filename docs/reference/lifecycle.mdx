@@ -1,0 +1,56 @@
+---
+sidebar_position: 1
+---
+
+# Runtime Lifecycle
+
+This page summarizes the observable startup lifecycle executed by Servable server orchestration.
+
+## Startup sequence
+
+1. Adapt incoming configuration.
+2. Create app via engine.
+3. Hydrate global Servable runtime.
+4. Build static schema.
+5. Validate schema.
+6. Launch system phase.
+7. Re-adapt config with system payload.
+8. Create HTTP server via engine.
+9. Start server runtime (migration/no-migration path).
+10. Run before-init phase.
+11. Register classes.
+12. Launch live server.
+13. Wire schema assets (functions, routes, jobs, services, triggers).
+14. Run seed phase.
+15. Run config phase.
+16. Run after-init phase.
+17. Register health-check routes.
+
+## Health behavior
+
+- Success path exposes `/health-check` and `/healthcheck`.
+- Failure path exposes `/health-check` with 500 status.
+
+## Practical debugging flow
+
+If startup fails:
+
+1. Check schema validation output first.
+2. Check engine startup/migration errors.
+3. Check wiring logs for routes/jobs/functions registration.
+4. Check seed/config failures.
+5. Query health endpoint after restart.
+
+## Source of truth
+
+- server/src/launch/index.js
+- server/src/launch/wireSchema/index.js
+- server/src/launch/registerClasses/index.js
+
+## Related
+
+- [Engine overview](./engine/overview)
+- [Protocol functions](./protocol/functions)
+- [Protocol triggers](./protocol/triggers)
+- [Cloud function contracts](./cloud-function-contracts)
+- [Config adaptation](./config-adaptation)

@@ -7,3 +7,39 @@ import SVGPlus from '@site/src/components/generic/svgplus'
 
 # Kubernetes
 
+Use this guide to deploy a Servable app on Kubernetes.
+
+## Prerequisites
+
+- A working container image for your Servable app.
+- A Kubernetes cluster and namespace access.
+- Externalized configuration and secrets.
+
+## Deployment flow
+
+1. Build and push your app image.
+2. Create config/secrets for runtime environment variables.
+3. Apply deployment + service manifests.
+4. Expose ingress or load balancer routes.
+5. Validate health endpoint and startup logs.
+
+## Runtime checks
+
+After deployment, verify:
+
+- Pods become ready.
+- `/health-check` returns success.
+- Schema/startup logs show no migration errors.
+
+## Operational tips
+
+1. Use staged rollouts for schema-sensitive updates.
+2. Keep protocol parameters environment-driven.
+3. Roll back quickly if startup lifecycle fails.
+
+## Related
+
+- [Guides overview](../overview)
+- [Schema migrations](../schema-migrations)
+- [Jobs and background work](../jobs-and-background)
+

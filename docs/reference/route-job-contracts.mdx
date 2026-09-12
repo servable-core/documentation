@@ -1,0 +1,57 @@
+---
+sidebar_position: 2
+---
+
+# Route and Job Contracts
+
+This page summarizes the effective runtime contracts for protocol routes and jobs.
+
+## Route contract matrix
+
+| Field | Required | Meaning | Notes |
+|:--|:--|:--|:--|
+| `method` | Yes | HTTP method (`get`, `post`, `put`, `patch`, `delete`, `head`, `options`, `trace`, `function`) | Lowercased at registration |
+| `path` or `paths` or `url` | Yes | Route path(s) | Paths are sanitized and lowercased |
+| `handler` | Yes | Async handler | Executed through HTTP processing wrapper |
+| `prefix` | No | Route namespace | Prepended before path |
+| `schema` | No | Request/response contract | Used by route validation flow |
+| `cache` | No | Route-level caching | Applied to read-oriented methods |
+| `rateLimiting` | No | Request throttling | Supported across methods |
+| `request.type` | No | Body parser content type | Defaults to `application/json` |
+| `servableArguments` | No | Extra runtime args | Added by server wiring in common route flow |
+
+### Route behavior notes
+
+1. Route paths are sanitized with path normalization and forced to lowercase.
+2. `function` method is mapped to `/function/{path}` style endpoints.
+3. Body parser raw mode is used for mutating verbs by default.
+
+## Job contract matrix
+
+| Field | Required | Meaning | Notes |
+|:--|:--|:--|:--|
+| `id` | Yes | Job identifier | Used as scheduler job name |
+| `handler` | Yes | Async job handler | Executed by scheduler worker |
+| `cron` | Yes (current adapter behavior) | Schedule expression | Passed to recurring scheduler setup |
+| `priority` | No | Job priority | Defaults to `high` |
+| `concurrency` | No | Concurrent executions | Defaults to `10` |
+| `attributes` | No | Additional payload | Passed on scheduled invocation |
+
+### Job behavior notes
+
+1. Jobs are registered through the engine job adapter.
+2. Scheduler storage depends on parse database URI configuration.
+3. Jobs are started and scheduled during startup wiring.
+
+## Source of truth
+
+- engines/parse-server/src/register/route/index.js
+- server/src/launch/wireSchema/register/routes/registerItem.js
+- engines/parse-server/src/register/jobs/index.js
+- server/src/launch/wireSchema/register/jobs/index.js
+
+## Related
+
+- [Protocol routes](./protocol/routes)
+- [Protocol jobs](./protocol/jobs)
+- [Troubleshooting by lifecycle](./troubleshooting-lifecycle)

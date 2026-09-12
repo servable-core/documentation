@@ -7,7 +7,48 @@ import BashTabs from '@site/src/components/generic/bashTabs'
 
 # Installation
 
-### Step 1: Install the clinext generator
-<BashTabs yarn={`yarn add global clinext`} />
+Install Servable CLI globally, then use it to scaffold a new app.
+
+## Step 1: Install the Servable CLI
+
+<BashTabs npm={`npm install -g @servable/cli`} />
+
+You can also run the CLI without a global install:
+
+<BashTabs npm={`npx @servable/cli`} />
+
+## Step 2: Create a new app
+
+From the folder where you want your project:
+
+```bash
+mkdir my-servable-app
+cd my-servable-app
+servable app new --appName="MyApp"
+```
+
+The command generates a project and installs dependencies.
+
+## Step 3: Start the app
+
+Inside the generated project, start your server:
+
+<BashTabs npm={`npm run start`} yarn={`yarn start`} />
+
+By default, Servable starts on a local port defined in your generated configuration.
+
+## Step 4: Verify the installation
+
+Check that:
+
+- The API server starts with no startup errors.
+- You can reach the health endpoint at `/health-check`.
+- The dashboard (if enabled in your app template) is accessible.
+
+## Next steps
+
+- Read [Troubleshooting](./troubleshooting) if startup fails.
+- Explore [Guides](../guides/overview) for routes, deployment, and usage patterns.
+- Use [CLI reference](../reference/commands/install) for all command options.
 
 

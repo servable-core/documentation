@@ -12,5 +12,9 @@
         "statusBar.noFolderBackground": "#12341F",
         "statusBar.noFolderForeground": "#F5FCF8"
     },
-    "editor.formatOnSave": false
+    "editor.formatOnSave": false,
+    "yaml.schemas": {
+        "file:///Users/anak/.vscode/extensions/docsmsft.docs-yaml-1.0.6/dist/toc.schema.json": "/toc\\.yml/i",
+        "https://www.artillery.io/schema.json": []
+    }
 }
