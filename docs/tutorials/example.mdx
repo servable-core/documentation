@@ -64,7 +64,9 @@ servable model add
 ```
 
 :::note
-You can add class manually by adding a class payload to the app/schema/1.0.0/index.json
+You can add a class manually by adding a class payload to `app/schema.json`, then running
+`servable schema build` to compile it into the committed artifact — see
+[Schema Migrations](../guides/schema-migrations).
 :::
 
 Restart the app to reflect the changes:

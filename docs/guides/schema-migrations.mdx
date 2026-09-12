@@ -4,39 +4,74 @@ sidebar_position: 2
 
 # Schema Migrations
 
-Schema changes in Servable should be treated as controlled runtime changes, not simple file edits.
+Servable tracks schema changes through a committed artifact, `servable.schema.json`, rather than
+versioned migration files. There is no `up.js`/`down.js` pair to write — schema changes are
+detected by diffing the current protocol sources against what was last committed, and classified
+automatically as safe or breaking.
 
-## When a migration is needed
+See [`servable schema`](../reference/commands/schema) for the full command reference. This guide
+covers the workflow and what to do when a boot fails because of it.
 
-A migration-sensitive change includes:
+## The three states a change can be in
 
-- Adding or removing fields.
-- Changing field types.
-- Updating indexes or constraints.
-- Enabling protocol features that add managed classes.
+- **Safe (additive)** — a new class, a new field, a widened permission, a field newly marked
+  `deprecated: true`. Applies with `servable schema apply`, no further steps needed.
+- **Breaking, pre-deprecated** — removing a field or class that was already marked `deprecated:
+  true` in an earlier commit. Requires `servable schema contract --reason=...`, which also bumps
+  the artifact's `compatibilityFloor`.
+- **Breaking, not deprecated** — a type change, a field newly becoming required, an index change,
+  or a removal that skipped the deprecation step. Never applies automatically. Either back out the
+  change, or mark the thing `deprecated: true` first and contract it in a later release.
 
-## Safe rollout checklist
+## Standard workflow
 
-1. Apply schema changes in a feature branch.
-2. Start locally and inspect startup/migration logs.
-3. Validate health endpoint after boot.
-4. Test read/write paths for changed models.
-5. Roll out to staging before production.
+1. Change a protocol's `schema.json`.
+2. `servable schema plan` — see what changed and which bucket it falls into.
+3. `servable schema apply` for additive changes, or `servable schema contract --reason="..."` for
+   a deprecated removal.
+4. Commit the updated `servable.schema.json` alongside the protocol change, in the same PR.
+5. `servable schema plan --ci` in CI (or a pre-push hook) catches anything breaking before merge —
+   it's a pure file diff, no database required.
 
-## Production guidance
+## What happens at boot
 
-- Prefer additive changes where possible.
-- Avoid simultaneous high-risk schema and runtime changes.
-- Keep rollback plan ready before deployment.
+The running server reads the committed `servable.schema.json` and performs two independent
+checks, either of which stops boot outright:
+
+1. **Drift** — the schema this boot's own code would produce must match the committed artifact's
+   hash exactly. A mismatch means someone edited a `schema.json` without running `servable schema
+   build`/`apply` before committing.
+2. **Compatibility floor** — this build's `compatibilityFloor` must be greater than or equal to
+   what's already recorded for the database it's connecting to. If a newer deploy already ran
+   `schema contract` and removed something this build's code still expects, boot refuses rather
+   than run against fields that no longer exist.
+
+If `servable.schema.json` doesn't exist at all, boot refuses immediately with an explicit error —
+every deploy is expected to have one committed; there's no fallback to "just build whatever the
+current code produces."
 
 ## Common failure signals
 
-- Startup fails during schema validation.
-- Health endpoint stays in error state.
-- Routes start but model persistence fails.
+- **"No servable.schema.json found"** — nobody ran `servable schema build`/`apply` on this
+  checkout yet. Run it and commit the result.
+- **"servable.schema.json is out of date"** — the committed artifact's hash doesn't match what the
+  current protocol sources produce. Someone changed a `schema.json` without rebuilding the
+  artifact. Run `servable schema build` (or `apply`) and commit.
+- **"compatibilityFloor is lower than the database's recorded floor"** — this build is older than
+  a schema contraction that already happened elsewhere. Rebuild from current sources rather than
+  deploying stale code.
+
+## Production guidance
+
+- Prefer additive changes; they need no coordination beyond `schema apply`.
+- Deprecate before you remove: mark a field `deprecated: true` in one release, contract it in a
+  later one, so pods mid-rollout never see a field vanish out from under them.
+- Test the full boot (including the schema check) in staging before production — the failure
+  modes above are all boot-time, not runtime.
 
 ## Related
 
+- [`servable schema` command reference](../reference/commands/schema)
 - [Getting Started troubleshooting](../gettingstarted/troubleshooting)
-- [Reference protocol schema](../reference/protocol/schema)
-- [Deployment Kubernetes](./deployment/kubernetes)
+- [Reference: protocol schema](../reference/protocol/schema)
+- [Deployment: Kubernetes](./deployment/kubernetes)
