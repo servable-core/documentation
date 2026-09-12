@@ -1,0 +1,36 @@
+---
+sidebar_position: 5
+lastTouchedBy: claude-code
+lastTouchedAt: "2026-09-12T11:00:08Z"
+---
+
+# $ servable model
+
+Adds a new model (class) to an existing protocol.
+
+## Add a model
+
+```bash
+servable model add
+```
+
+Prompts for:
+
+```bash
+  protocolPath       Protocol to add a model to
+  className          Class name                (required)
+  classDescription   Class description          (required)
+  license
+```
+
+Scaffolds the new class's files inside the target protocol and registers it in the protocol's
+`schema.json`. This is the write-back step that makes the new class part of what `servable schema
+build` compiles into the app's committed artifact. See
+[Protocol schema](../protocol/schema) for the file format, and
+[`servable schema`](./schema) for compiling and committing the change afterward.
+
+## Related
+
+- [Protocol schema reference](../protocol/schema)
+- [`servable schema` command reference](./schema)
+- [`servable protocol` command reference](./protocol)

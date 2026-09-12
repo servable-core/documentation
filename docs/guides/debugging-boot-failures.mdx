@@ -1,0 +1,77 @@
+---
+sidebar_position: 5
+lastTouchedBy: claude-code
+lastTouchedAt: "2026-09-12T11:00:08Z"
+---
+
+# Debugging Boot Failures
+
+`launch()` runs through many sequential phases (see [Runtime lifecycle](../reference/lifecycle)
+for the full list), and it's easy to end up staring at a wall of log output with no idea which
+line actually matters. This guide is the practical read-the-log process, not a concepts page.
+
+## Read the first error, not the last
+
+Boot logs are noisy: Kafka consumer rebalancing, protocol instance construction, deprecation
+warnings, none of that is the cause. Scroll to (or `grep` for) the **first** `Error`, exception,
+or stack trace, not whatever's at the bottom. A single early failure frequently cascades into
+several unrelated-looking messages afterward.
+
+## Confirm whether launch actually finished
+
+```bash
+grep "Finished launching Servable endpoint" your-boot.log
+```
+
+If that line is present, the app *did* complete every phase. Any errors before it were either
+non-fatal (caught and logged, boot continued) or resolved themselves (a dependency that wasn't
+ready yet became ready moments later). If it's absent, whatever killed the process is somewhere
+above, usually right before the log simply stops.
+
+## Distinguish transient boot-race noise from real failures
+
+Some errors are expected during the first few seconds of a fresh docker-compose bring-up, because
+a dependency (Kafka/Redpanda, Typesense, ClickHouse) hasn't finished its own startup yet:
+
+```
+Request to Node 0 failed due to "ECONNREFUSED Error"
+Request to Node 0 failed due to " Request failed with HTTP code 503 | Server said: Not Ready or Lagging"
+```
+
+These are noise **only if launch still reaches "Finished launching" afterward** and the dependency
+is confirmed healthy once boot completes (`docker ps`, or a direct health-check against the
+service). If launch never recovers, or the same error keeps repeating well past a reasonable
+startup window, treat it as real.
+
+## Common failure signatures
+
+| What you see | What it actually means |
+|:--|:--|
+| `MongooseServerSelectionError: connect ECONNREFUSED 127.0.0.1:27017` | Nothing is listening on the *declared* port, usually a dynamically-reassigned port (see [Local development](./local-development)) that never made it into the running config, or the container genuinely isn't up. |
+| `No servable.schema.json found` | Nobody ran `servable schema build`/`apply` on this checkout. See [Schema Migrations](./schema-migrations). |
+| `servable.schema.json is out of date` | A protocol's `schema.json` changed without rebuilding the artifact. Run `servable schema build` and commit. |
+| `compatibilityFloor (N) is lower than the database's recorded floor` | A newer deploy already ran `schema contract` against this database. Rebuild from current sources. |
+| `/health-check` 404s despite a clean-looking boot | `Route.define()` wasn't awaited somewhere in its call chain. See [Route and job contracts](../reference/route-job-contracts). The failure is silent by construction; nothing else in the log will point at it. |
+| `Error response from daemon: Conflict. The container name ... is already in use` | A container with that name exists outside this compose project. See [Local development](./local-development). |
+
+## Health-check specifically
+
+A working `/health-check` doesn't just mean the process didn't crash; it means the very last
+launch phase (route registration) completed. If everything else in the log looks clean but
+`/health-check` doesn't respond, that phase itself is the thing to investigate, not an earlier one.
+
+```bash
+curl -i http://localhost:<port>/health-check
+```
+
+`200` with `"Health check passed"` is the success path. `500` with `"Server failed"` means launch
+hit its outer catch block somewhere and registered the fallback route; the real error is further
+up the log. No response at all (connection refused/timeout, not a 404 or 500) means the route was
+never registered at all; see the `Route.define()` row above.
+
+## Related
+
+- [Runtime lifecycle](../reference/lifecycle)
+- [Troubleshooting by lifecycle](../reference/troubleshooting-lifecycle)
+- [Local development with Docker](./local-development)
+- [Schema Migrations](./schema-migrations)

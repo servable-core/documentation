@@ -1,5 +1,7 @@
 ---
 sidebar_position: 3
+lastTouchedBy: claude-code
+lastTouchedAt: "2026-09-12T11:00:08Z"
 ---
 
 # Troubleshooting by Lifecycle
@@ -20,7 +22,7 @@ Use this page to map runtime failures to the launch phase where they usually ori
 | Seed phase | Missing baseline data | Check seed module conditions and idempotency |
 | Config phase | Wrong runtime behavior | Validate resolved config entries |
 | After init | Late startup regressions | Inspect protocol after-init operations |
-| Health route registration | `/health-check` fails | Verify startup completed successfully |
+| Health route registration | `/health-check` 404s | Check that `Route.define()` was awaited (see [Route and job contracts](./route-job-contracts)); a fully successful boot can still silently fail to register the route if it wasn't |
 
 ## Quick diagnosis sequence
 

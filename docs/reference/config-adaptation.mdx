@@ -1,5 +1,7 @@
 ---
 sidebar_position: 6
+lastTouchedBy: claude-code
+lastTouchedAt: "2026-09-12T11:00:08Z"
 ---
 
 # Config Adaptation
@@ -8,25 +10,45 @@ This page describes how Servable normalizes and enriches `servableConfig` during
 
 ## Adaptation phases
 
-Config adaptation occurs in two places during launch:
+`adaptConfig()` is called twice during `launch()`:
 
-1. Early adaptation before app creation.
-2. Live adaptation after system launch payload is available.
+1. Before `launchSystem()` (the docker-compose bring-up).
+2. After it, with `live: true`, once `launchSystem()`'s own dynamically-detected connection
+   details (database URIs, ports reassigned by `getPortNear` when a declared port wasn't free)
+   have already been merged into `servableConfig.envs`.
 
-Both phases call the same adaptation entry and pass through engine configuration hooks.
+Both calls run the exact same `basic()` defaulting pass and the same
+`engine.setConfigurations({ servableConfig, live, engine })` hook, but `basic()` guards itself
+with `servableConfig.adaptedBasic`: the very first line returns immediately if that flag is
+already set, so its defaulting logic only actually executes once per process, on the first call.
+The second call exists so `engine.setConfigurations()` (which is *not* guarded the same way, since
+some engine hooks legitimately need to see the post-`launchSystem()` state) gets a chance to react
+to the live payload.
 
 ## What gets normalized
 
-The basic adaptation layer sets defaults for:
+The basic adaptation layer (first call only) sets defaults for:
 
 - `dryRun` behavior and matcher function.
 - `distribution` settings.
-- `system.docker` defaults.
+- `system.docker`, per-key, not "is the whole object missing": setting only
+  `system.docker.namespace` (see [protocol system](./protocol/system)) must not silently drop the
+  `enabled`/`environments` defaults just because the caller already provided *a* `system.docker`
+  object.
 - `protocols.local` resolution paths.
 - `rootProtocolPayload` defaults.
-- runtime `envs` values (server host/port/url, keys, verbosity, cache URIs).
+- runtime `envs` values (server host/port/url, keys, verbosity, cache URIs), each via `envOr(process.env.X, default)`,
+  so an explicitly-set env var always wins over the hardcoded default.
 
-It also marks `servableConfig.adaptedBasic = true` to avoid duplicate basic adaptation.
+`utilsDatabaseURI` specifically uses `envOr(servableConfig.envs["utilsDatabaseURI"],
+process.env.SERVABLE_UTILS_DATABASE_URI)` rather than an unconditional assignment, preserving
+whatever's already in `servableConfig.envs` over the raw env var, the same preserve-if-set pattern
+used for `databaseURI` in the engine's own `setConfigurations`. This matters because
+`servableConfig.envs.utilsDatabaseURI` can already hold the correct, dynamically-detected value by
+the time anything reads it back out.
+
+It also marks `servableConfig.adaptedBasic = true` on completion, which is what makes the second
+call's `basic()` invocation a no-op.
 
 ## Engine hook
 
@@ -51,6 +73,7 @@ This allows engine adapters to inject framework-runtime specifics without changi
 
 ## Related
 
+- [Protocol system](./protocol/system)
 - [Runtime lifecycle](./lifecycle)
 - [Troubleshooting by lifecycle](./troubleshooting-lifecycle)
 - [Getting Started requirements](../gettingstarted/requirements)

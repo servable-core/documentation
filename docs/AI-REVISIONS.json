@@ -1,0 +1,95 @@
+{
+  "description": "Chronological log of every file created or edited by Claude Code in this documentation project, across sessions. Complements git history with the why behind each change; git log/diff already has the exact before/after content. Newest entries at the bottom.",
+  "revisions": [
+    {
+      "file": "docs/tutorials/example.mdx",
+      "timestamp": "2026-09-12T11:00:08Z",
+      "action": "modified",
+      "summary": "Fixed a note pointing at app/schema/1.0.0/index.json, a path that no longer exists in scaffolds. Now points at the flat app/schema.json plus a link to schema build."
+    },
+    {
+      "file": "docs/reference/protocol/schema.md",
+      "timestamp": "2026-09-12T11:00:08Z",
+      "action": "modified",
+      "summary": "Was generic and tool-agnostic. Added the real schema.json file shape, field format, the deprecated flag's role, and how it feeds into the app-level committed artifact via schema build."
+    },
+    {
+      "file": "docs/guides/schema-migrations.mdx",
+      "timestamp": "2026-09-12T11:00:08Z",
+      "action": "modified",
+      "summary": "Rewritten around the actual plan/apply/contract workflow, compatibilityFloor, and the exact boot-time checks and error strings, replacing a generic tool-agnostic checklist."
+    },
+    {
+      "file": "docs/reference/commands/schema.mdx",
+      "timestamp": "2026-09-12T11:00:08Z",
+      "action": "created",
+      "summary": "New CLI reference page for servable schema build/plan/apply/contract; no reference existed for this command group before."
+    },
+    {
+      "file": "docs/reference/commands/protocol.mdx",
+      "timestamp": "2026-09-12T11:00:08Z",
+      "action": "created",
+      "summary": "New CLI reference page for servable protocol new/add/eject/document/community; flags community list and protocol test as non-functional stubs rather than documenting them as working features."
+    },
+    {
+      "file": "docs/reference/commands/model.mdx",
+      "timestamp": "2026-09-12T11:00:08Z",
+      "action": "created",
+      "summary": "New CLI reference page for servable model add and its schema.json write-back."
+    },
+    {
+      "file": "docs/reference/config-adaptation.mdx",
+      "timestamp": "2026-09-12T11:00:08Z",
+      "action": "modified",
+      "summary": "Documented the two-call adaptConfig sequence precisely, including the adaptedBasic guard verified live against a real boot (a first draft repeated an unverified claim from a commit message; corrected after instrumenting and testing it directly)."
+    },
+    {
+      "file": "docs/reference/protocol/system.md",
+      "timestamp": "2026-09-12T11:00:08Z",
+      "action": "modified",
+      "summary": "Added the real docker-compose mechanics: dynamic port reassignment via getPortNear, x-servable-envs, the system.docker.namespace isolation feature, and the fingerprint-vs-manual-docker-changes gotcha."
+    },
+    {
+      "file": "docs/reference/route-job-contracts.mdx",
+      "timestamp": "2026-09-12T11:00:08Z",
+      "action": "modified",
+      "summary": "Added a note that Route.define() is async and must be awaited by its caller, otherwise a registration failure is a silently swallowed rejection."
+    },
+    {
+      "file": "docs/reference/troubleshooting-lifecycle.mdx",
+      "timestamp": "2026-09-12T11:00:08Z",
+      "action": "modified",
+      "summary": "Corrected the health route registration row; it previously suggested verifying startup completed as the fix, which is insufficient given a fully successful boot can still silently fail to register the route."
+    },
+    {
+      "file": "docs/reference/lifecycle.mdx",
+      "timestamp": "2026-09-12T11:00:08Z",
+      "action": "modified",
+      "summary": "Added a cross-reference at the health-check registration step to the Route.define await requirement. Rest of the page was checked and found accurate, no other changes needed."
+    },
+    {
+      "file": "docs/reference/model/lifecycle.mdx",
+      "timestamp": "2026-09-12T11:00:08Z",
+      "action": "modified",
+      "summary": "Added a cross-link to the protocol schema reference page."
+    },
+    {
+      "file": "docs/guides/local-development.mdx",
+      "timestamp": "2026-09-12T11:00:08Z",
+      "action": "created",
+      "summary": "New symptom-first guide covering port drift after container recreation, manually recreated containers not being re-adopted, container name conflicts, and the system.docker.namespace isolation feature."
+    },
+    {
+      "file": "docs/guides/debugging-boot-failures.mdx",
+      "timestamp": "2026-09-12T11:00:08Z",
+      "action": "created",
+      "summary": "New guide covering the log-reading process used throughout the session: read the first error not the last, confirm launch actually finished, distinguish transient boot-race noise from real failures, and a table of common failure signatures."
+    },
+    {
+      "file": "docs/guides/overview.mdx",
+      "timestamp": "2026-09-12T11:00:08Z",
+      "action": "modified",
+      "summary": "Linked the two new guides (local-development, debugging-boot-failures) into the related-guides list."
+    }
+  ]
+}

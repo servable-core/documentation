@@ -1,5 +1,7 @@
 ---
 sidebar_position: 1
+lastTouchedBy: claude-code
+lastTouchedAt: "2026-09-12T11:00:08Z"
 ---
 
 # Runtime Lifecycle
@@ -30,6 +32,9 @@ This page summarizes the observable startup lifecycle executed by Servable serve
 
 - Success path exposes `/health-check` and `/healthcheck`.
 - Failure path exposes `/health-check` with 500 status.
+- Both registrations go through `Route.define()`, which is async. See
+  [Route and job contracts](./route-job-contracts) for why an unawaited call here can make step 17
+  silently no-op even on an otherwise fully successful boot.
 
 ## Practical debugging flow
 

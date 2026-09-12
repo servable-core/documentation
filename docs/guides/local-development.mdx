@@ -1,0 +1,99 @@
+---
+sidebar_position: 4
+lastTouchedBy: claude-code
+lastTouchedAt: "2026-09-12T11:00:08Z"
+---
+
+# Local Development with Docker
+
+Servable brings up every protocol's declared dependencies (databases, caches, search indexes) as
+a single docker-compose stack at launch. Most of the time this is invisible, but a few real
+failure modes show up specifically in local development, when you restart often and sometimes
+touch containers by hand. This guide is a direct walkthrough of those, not a general concepts page.
+
+## "It was working, now I get ECONNREFUSED on a port that used to work"
+
+A service's declared host port is a request, not a guarantee. `getPortNear` reassigns it to the
+nearest free port if the declared one is taken (running two worktrees' stacks at once is the most
+common cause). If your own `.env` hardcodes that port instead of reading it dynamically, you'll
+get `ECONNREFUSED` against the *old* port even though the container is healthy on a new one.
+
+Check what's actually running:
+
+```bash
+docker ps --format "{{.Names}}\t{{.Ports}}" | grep my-service
+```
+
+If the port doesn't match your `.env`, and nothing is actually holding the *declared* port anymore
+(`lsof -nP -iTCP:<port> -sTCP:LISTEN`), the reassignment likely got frozen into the target compose
+file from an earlier moment when the port genuinely was taken. Clear it and relaunch:
+
+```bash
+rm .system/<namespace-if-set>/<protocol-id>/docker/docker-compose.yaml
+```
+
+The next launch re-runs port adaptation from scratch. See
+[Protocol system](../reference/protocol/system) for why this file exists and what it tracks. The
+proper long-term fix is an `x-servable-envs` entry on the service so your app reads the real port
+at boot instead of a hardcoded one, see that same page.
+
+## "I recreated a container by hand and now it won't come back up right"
+
+If you `docker rm` a container yourself (to fix a stuck port binding, for example: `docker
+start`/`restart` on an existing container can silently fail to rebind a previously-configured host
+port, so a full `docker rm` and recreate is the reliable fix), Servable's own launch code has no
+way to notice you did that. It only compares the *declared* compose config against what it last
+recorded, not against what Docker is actually running. The target compose file above still says
+"already applied," so the next launch skips recreating anything, and you're left with nothing
+running at all.
+
+Same fix: delete that protocol's target compose file before relaunching, so the fingerprint check
+has nothing to match against and genuinely recreates the stack.
+
+## "docker-compose up failed with a container name conflict"
+
+```
+Error response from daemon: Conflict. The container name "/my-container" is already in use...
+```
+
+This happens when a container with that exact name already exists but wasn't created under this
+same compose project, commonly one you created manually at some point (check with `docker
+inspect <name> --format '{{json .Config.Labels}}'`; an empty `{}}` means no compose project owns
+it). Docker enforces container names globally, regardless of which project asked for the name.
+
+If it's safe to recreate (data is bind-mounted, not in a Docker-managed volume, so it survives),
+stop and remove it, then relaunch:
+
+```bash
+docker stop my-container && docker rm my-container
+```
+
+If something else (like another running service) actively depends on that exact container staying
+up, restart that dependent afterward. It will have a stale connection to whatever replaced it.
+
+## Isolating multiple checkouts from each other
+
+If you're running more than one worktree of the same app and want their docker stacks fully
+separate (different containers, different data), set `system.docker.namespace` in
+`servable.config.js`:
+
+```js
+export default {
+  id: 'my-app',
+  system: {
+    docker: {
+      namespace: 'my-worktree-name',
+    },
+  },
+}
+```
+
+See [Protocol system](../reference/protocol/system) for exactly what this does and does not
+isolate (ports and bind-mount volumes are already unique per checkout without it; this is
+specifically for compose project/network names and explicit `container_name`s).
+
+## Related
+
+- [Protocol system](../reference/protocol/system)
+- [Config adaptation](../reference/config-adaptation)
+- [Debugging boot failures](./debugging-boot-failures)

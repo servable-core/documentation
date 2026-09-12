@@ -1,0 +1,68 @@
+---
+sidebar_position: 4
+lastTouchedBy: claude-code
+lastTouchedAt: "2026-09-12T11:00:08Z"
+---
+
+# $ servable protocol
+
+Scaffolds, adds, ejects, and documents protocols: the reusable units of behavior (classes,
+routes, jobs, triggers, schema) that a Servable app composes.
+
+## Create a standalone protocol project
+
+```bash
+servable protocol new
+```
+
+Prompts for a protocol id, destination, package manager, license, and release type, then scaffolds
+a new protocol project you can develop and publish independently of any one app.
+
+## Add a protocol directly inside an app
+
+```bash
+servable protocol add
+```
+
+Scaffolds an empty protocol at `<appPath>/protocols/<protocolId>`, for a protocol that only ever
+needs to live inside this one app, with no separate package/publish step.
+
+## Eject a protocol out of an app
+
+```bash
+servable protocol eject
+```
+
+Copies a protocol currently living inside an app out to its own standalone project (same shell as
+`protocol new`), then, if you confirm the `updateApp` prompt, removes it from the app and
+updates the app's `package.json` to depend on it instead. Use this when an in-app protocol has
+grown into something you want to reuse elsewhere or publish separately.
+
+## Generate protocol documentation
+
+```bash
+servable protocol document
+```
+
+Prompts for a protocol path and writes generated documentation for it (via `@servable/tools`'
+`documentProtocol`): a structural summary of what the protocol declares (classes, routes, jobs),
+not prose you write yourself.
+
+## Community protocols
+
+```bash
+servable protocol community use
+```
+
+Wires an existing protocol from Servable's community registry into an app, prompting for the
+protocol, target app, and class to attach it to.
+
+`servable protocol community list` exists but is not yet functional. It currently only checks
+that you're logged in and does nothing further; there is no confirmed registry backend behind it
+yet. `protocol test` is also a present-but-empty stub. Don't rely on either.
+
+## Related
+
+- [Protocol reference overview](../protocol/index)
+- [`servable schema` command reference](./schema)
+- [`servable model` command reference](./model)

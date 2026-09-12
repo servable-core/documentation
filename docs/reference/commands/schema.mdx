@@ -1,17 +1,19 @@
 ---
 sidebar_position: 3
+lastTouchedBy: claude-code
+lastTouchedAt: "2026-09-12T11:00:08Z"
 ---
 
 # $ servable schema
 
-Manages `servable.schema.json`, the app's committed schema artifact — a git-tracked snapshot of
+Manages `servable.schema.json`, the app's committed schema artifact: a git-tracked snapshot of
 every protocol's schema, built and diffed entirely offline (no database involved). The running
 server reads this same file at boot to validate that what's deployed matches what was committed,
 and to enforce that a schema never regresses what an older, still-running pod may depend on
 during a rolling deploy.
 
 Every command in this group operates only on local files. Applying a schema to a live database,
-and refusing to boot when a build is incompatible, both happen in the server at launch — not here.
+and refusing to boot when a build is incompatible, both happen in the server at launch, not here.
 
 ## Build the artifact
 
@@ -29,11 +31,11 @@ Run this after adding or changing any protocol's `schema.json`, then commit the 
 Compares the committed artifact against what `schema build` would produce right now, and
 classifies every difference as one of:
 
-- **SAFE** — additive (new class, new field, widened permissions, a field newly marked
+- **SAFE**: additive (new class, new field, widened permissions, a field newly marked
   `deprecated`). Applies automatically; no gate needed.
-- **BREAKING, pre-deprecated** — a field or class being removed that was already marked
+- **BREAKING, pre-deprecated**: a field or class being removed that was already marked
   `deprecated: true` in a prior commit. Eligible for `schema contract`.
-- **BREAKING, not deprecated** — a type change, a newly-required field, an index change, or a
+- **BREAKING, not deprecated**: a type change, a newly-required field, an index change, or a
   removal that was never deprecated first. Never applied automatically.
 
 ```bash
@@ -52,12 +54,12 @@ servable schema plan
 servable schema plan --ci
 ```
 
-Since this never touches a database, it's meant to run as a pre-push hook or a CI step — a
+Since this never touches a database, it's meant to run as a pre-push hook or a CI step. A
 breaking schema change gets caught in the PR itself, before it reaches a running server.
 
 ## Apply safe changes
 
-Rebuilds the schema and rewrites `servable.schema.json` — but only if every change since the last
+Rebuilds the schema and rewrites `servable.schema.json`, but only if every change since the last
 commit is additive. Refuses outright if anything breaking is present.
 
 ```bash
@@ -65,13 +67,13 @@ servable schema apply
 ```
 
 If this refuses, run `schema plan` to see what's breaking. A removal only becomes applyable once
-it's been marked `deprecated: true` in an earlier release — see `schema contract` below.
+it's been marked `deprecated: true` in an earlier release. See `schema contract` below.
 
 ## Remove a deprecated field or class
 
 The only command in this group allowed to remove anything, and the only one that advances
 `compatibilityFloor`. Requires the field/class being removed to have already been marked
-`deprecated: true` in a *previously committed* artifact — not the one you're building right now.
+`deprecated: true` in a *previously committed* artifact, not the one you're building right now.
 
 ```bash
 servable schema contract --reason="superseded by nature, deprecated since 2026-08"
@@ -85,11 +87,11 @@ servable schema contract --reason="superseded by nature, deprecated since 2026-0
 ```
 
 `--force` bypasses the deprecation check for something known to be safe regardless (e.g. added and
-removed within the same release, never actually deployed). `--reason` is required either way —
+removed within the same release, never actually deployed). `--reason` is required either way:
 every contraction is recorded, never silent.
 
 Running this bumps `compatibilityFloor` by one. Any pod built against an older schema will refuse
-to boot rather than run against a database it doesn't know is missing fields it expects — see
+to boot rather than run against a database it doesn't know is missing fields it expects. See
 [Schema Migrations](../../guides/schema-migrations) for how that check works at launch.
 
 ## Typical workflow

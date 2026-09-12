@@ -1,5 +1,7 @@
 ---
 sidebar_position: 2
+lastTouchedBy: claude-code
+lastTouchedAt: "2026-09-12T11:00:08Z"
 ---
 
 # Route and Job Contracts
@@ -25,6 +27,13 @@ This page summarizes the effective runtime contracts for protocol routes and job
 1. Route paths are sanitized with path normalization and forced to lowercase.
 2. `function` method is mapped to `/function/{path}` style endpoints.
 3. Body parser raw mode is used for mutating verbs by default.
+4. **`Route.define()` is async and must be awaited by its caller.** It's an async function, so any
+   exception thrown inside it (building the cache middleware, the rate-limiter, anything before
+   the route is actually registered) becomes a rejected Promise, not a synchronous throw. If the
+   caller doesn't `await` the call, that rejection is never caught: the route silently never
+   registers, with no error logged anywhere, and requests to it 404 as if the path was never
+   declared. This is easy to miss because everything else about the boot can look completely
+   successful. Always `await Servable.App.Route.define(...)`.
 
 ## Job contract matrix
 
