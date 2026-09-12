@@ -1,0 +1,85 @@
+---
+sidebar_position: 6
+lastTouchedBy: claude-code
+lastTouchedAt: "2026-09-12T11:49:28Z"
+---
+
+# Using the VS Code extension
+
+The [Servable VS Code extension](https://github.com/servable-core/vscode) puts protocol browsing,
+app structure, server status, and protocol scaffolding directly in the editor. See
+[VS Code Extension](../reference/vscode-extension) for the exact technical reference; this page
+walks through actually using it.
+
+## Install it
+
+Not yet on the VS Code Marketplace - install a packaged build:
+
+```bash
+git clone https://github.com/servable-core/vscode.git
+cd vscode
+npm install
+npm run package        # produces servable-vscode-<version>.vsix
+code --install-extension servable-vscode-<version>.vsix
+```
+
+Reload any VS Code window already open on a Servable app after installing or updating it -
+extensions installed via the CLI don't hot-load into windows that were already open.
+
+## Open a Servable app
+
+The extension only activates in a workspace with a `servable.config.js` at its root - the same file
+the app's own `index.js` passes into `launch()`. Open one (`backend/main`, for example) and a
+polar-bear icon appears in the Activity Bar.
+
+## Check server status
+
+Click the Servable icon, open **Status**. It shows the resolved App ID, host/port, public URI,
+engine mount, and whether a master key is configured (never its value). Use the pulse icon in the
+view's title bar to ping `<serverHost>:<serverPort>/health-check` and see whether the real process
+is actually up.
+
+## Browse app structure
+
+Open **App**:
+
+- **Models** lists every model under `app/models/`; expand one to see which protocols it declares in
+  its `protocols.js`.
+- **Routes** is a plain file tree over `app/routes/` - expand folders, click a file to open it.
+
+## Browse protocols
+
+Open **Protocols**, grouped by npm scope (`@adoucoure`, `@servable-community`, unscoped). Expand any
+protocol to see:
+
+- **Used by** - which models actually use it, available immediately.
+- Its own files (`classes/`, `lib/`, `triggers/`, etc.) - click any to open it.
+
+Click the protocol itself (not a child row) to open a rendered summary of its manifest.
+
+Run **Servable: Build Schema** (the class-icon button in the Protocols title bar) to additionally
+resolve which *classes* a real schema build associates with each protocol. On most real apps today
+this currently resolves to 0 additional links - a known upstream issue, not a sign anything is
+broken in your app. See
+[VS Code Extension → Known limitations](../reference/vscode-extension#known-limitations) for why.
+
+## Create a new protocol
+
+In the **Protocols** view's title bar, click the "+" (New Protocol). Enter a protocol id (plain
+`commentable`, or scoped `@myscope/commentable`) and a description. This runs
+[`servable protocol add`](../reference/commands/protocol#add-a-protocol-directly-inside-an-app)
+against your workspace and scaffolds it at `protocols/<protocolId>`. Progress and any CLI output
+land in the **Servable CLI** output channel; the Protocols tree refreshes automatically once it
+finishes.
+
+## Eject a protocol
+
+Right-click a protocol and choose **Eject Protocol…**. Pick a destination folder, then choose whether
+to also remove it from this app (updating references) or leave the in-app copy in place. This runs
+[`servable protocol eject`](../reference/commands/protocol#eject-a-protocol-out-of-an-app).
+
+## Related
+
+- [VS Code Extension reference](../reference/vscode-extension)
+- [`servable protocol` command reference](../reference/commands/protocol)
+- [Overview](./overview)

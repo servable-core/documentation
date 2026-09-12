@@ -174,6 +174,36 @@
       "timestamp": "2026-09-12T11:42:24Z",
       "action": "modified",
       "summary": "Same fix as docs/reference/overview.mdx (admonition leaking into the llms.txt description), plus updated the pitch to name Parse Server directly instead of the vaguer 'framework engine of choice', matching the corrected framing in docs/overview.mdx."
+    },
+    {
+      "file": "docs/reference/vscode-extension.mdx",
+      "timestamp": "2026-09-12T11:49:28Z",
+      "action": "created",
+      "summary": "New reference page for servable-core/vscode: activation, dependency resolution (including two implementation gotchas found and fixed while building it - @servable/cli's broken exports map, and process.execPath being Electron's helper binary rather than plain node in the extension host), views, commands, and the buildSchema hydration fix and its remaining known limitation (Protocol.loader null issue)."
+    },
+    {
+      "file": "docs/guides/using-the-vscode-extension.mdx",
+      "timestamp": "2026-09-12T11:49:28Z",
+      "action": "created",
+      "summary": "New task-oriented guide: install, activate, use each view, create and eject a protocol."
+    },
+    {
+      "file": "docs/guides/overview.mdx",
+      "timestamp": "2026-09-12T11:49:28Z",
+      "action": "modified",
+      "summary": "Linked the new using-the-vscode-extension guide into the related-guides list."
+    },
+    {
+      "file": "docs/reference/overview.mdx",
+      "timestamp": "2026-09-12T11:49:28Z",
+      "action": "modified",
+      "summary": "Added the new VS Code Extension reference page to the in-this-section list."
+    },
+    {
+      "file": "docs/reference/packages.mdx",
+      "timestamp": "2026-09-12T11:49:28Z",
+      "action": "modified",
+      "summary": "Added the new servable-core/vscode extension to the package catalog. Left the page's existing stale content (servable-community org links, CLI described as a yeoman generator - both no longer accurate) untouched since fixing those was out of scope for this change."
     }
   ]
 }

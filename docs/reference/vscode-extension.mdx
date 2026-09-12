@@ -1,0 +1,126 @@
+---
+sidebar_position: 8
+lastTouchedBy: claude-code
+lastTouchedAt: "2026-09-12T11:49:28Z"
+---
+
+# VS Code Extension
+
+[`servable-core/vscode`](https://github.com/servable-core/vscode) (extension id `servable-core.servable-vscode`)
+surfaces protocol resources, app structure, server status, and protocol scaffolding directly in the
+editor, for a workspace running Servable. Not yet published to the VS Code Marketplace - install it
+from a packaged `.vsix` (see [Using the VS Code extension](../guides/using-the-vscode-extension) for
+the install steps).
+
+## Activation
+
+Activates when the opened workspace contains a `servable.config.js` at its root - the same file an
+app's own `index.js` passes into `launch()`. A workspace without one (for example a bare protocol
+package, or `tests/ui`) never activates the extension.
+
+## Dependency resolution
+
+The extension resolves `@servable/tools`, `@servable/server`, and `@servable/cli` from the **target
+workspace's own** `node_modules` at runtime, rather than bundling its own copies. This guarantees
+whatever the extension shows or runs matches the exact version that workspace actually depends on,
+at the cost of the extension doing nothing useful in a workspace that hasn't run `npm install`.
+
+Resolution for `@servable/cli` specifically goes through `require.resolve.paths()` rather than plain
+`require.resolve('@servable/cli')`: this package's `exports` map points at a `dist/` build that isn't
+guaranteed to exist (a git-branch-pinned dependency's `dist/` may never have been built or committed),
+which makes ordinary resolution throw even though the `bin` script (`src/app.js`) is present and
+runnable. `resolve.paths()` only computes candidate `node_modules` directories - it doesn't try to
+load the package's entry point, so it works regardless of whether the package's own `main`/`exports`
+resolve to anything real.
+
+CLI commands are run by spawning the system's `node` binary (PATH-resolved), never
+`process.execPath`. Inside a VS Code extension host, `process.execPath` is VS Code's own Electron
+helper binary, not a plain Node executable - confirmed by testing that even with
+`ELECTRON_RUN_AS_NODE=1` set, it hangs indefinitely with zero output on real CLI work (likely because
+`process.versions.electron` stays set under that flag, and `@servable/cli`'s `settings-store`
+dependency branches on it toward an Electron-only API with no real Electron app to answer it). A
+plain system `node` binary has none of that ambiguity.
+
+## Views
+
+All three views live under the Servable icon in the Activity Bar.
+
+### Status
+
+Resolved env config for the workspace: App ID, App Name, Server Host/Port, Public URI, Engine Mount,
+and whether a master key is configured - the master key's actual value is never read or displayed,
+only its presence. A "Ping Health Check" action hits `<serverHost>:<serverPort>/health-check`
+directly (the real bind address), not `publicURI` - `publicURI` can point through a proxy or
+indirection that isn't reachable directly in local dev.
+
+### App
+
+- **Models**: every directory under `app/models/`, expandable to the protocol ids it declares in its
+  `protocols.js` (imported directly rather than parsed as text, since entries are a plain array of
+  strings and `{ id, params }` objects with no reliable text-parsing shortcut). Clicking a model
+  opens its `class.js`; clicking a protocol entry opens that model's `protocols.js`.
+- **Routes**: a generic recursive file tree over `app/routes/`, click to open - no attempt to import
+  or parse route files, since unlike `protocols.js` they routinely have side-effecting imports and
+  aren't safe to load just to list them.
+
+### Protocols
+
+Every protocol found under `protocols/**/index.json`, grouped by npm scope. Expanding a protocol
+shows:
+
+- **Used by** - which models declare this protocol, read the same way as the App view's Models
+  section (via each model's `protocols.js`). Available immediately, no build step.
+- **Used by - Build Schema** - which classes a real `buildSchema` call resolved this protocol
+  against, shown only after running the "Build Schema" command. See **Known limitations** below -
+  this currently resolves to 0 links for most real apps.
+- The protocol's own files and folders (`classes/`, `lib/`, `triggers/`, `target/`, etc.), mirrored
+  as a plain file tree, click to open.
+
+Right-click a protocol for "Eject Protocol…"; use the "+" button in the view's title bar for "New
+Protocol".
+
+## Commands
+
+| Command | What it does |
+|---|---|
+| `Servable: Refresh Protocols` | Rescans `protocols/**` from disk. |
+| `Servable: Build Schema` | Hydrates `Servable.App.*` (see below) and calls `@servable/tools`'s `buildSchema`, populating the "Used by - Build Schema" groups. |
+| `Servable: New Protocol` | Runs `servable protocol add` non-interactively against the workspace. |
+| `Servable: Eject Protocol…` | Runs `servable protocol eject`, with a confirmation choice between ejecting only vs. also removing the protocol from the app. |
+| `Servable: Refresh Status` / `Servable: Ping Health Check` | Rescans env config / re-pings the server. |
+| `Servable: Refresh App` | Rescans `app/models/` and `app/routes/`. |
+
+CLI-backed commands stream their process output to a dedicated "Servable CLI" output channel.
+
+## Build Schema and hydration
+
+Calling `@servable/tools`'s `buildSchema` standalone - outside `@servable/server`'s own `launch()` -
+used to fail silently for every class that extends a Servable-provided base class
+(`Servable.App.Object`, etc.), because that base class is only defined after
+`global.Servable.hydrate(...)` runs. The extension replicates that hydration step first. Confirmed by
+testing that this needs **no live database or running server** - only `engine.adaptApp()`'s pure
+class construction, which `@servable/server`'s own `launch()` sequence also doesn't gate behind
+`engine.createApp()` succeeding.
+
+The `Servable` class that does this hydration isn't part of `@servable/server`'s public package
+export (only `launch` is) - the extension reaches it via the same internal path
+`@servable/server`'s own `launch/index.js` uses, since there's currently no supported public
+entrypoint for hydration alone.
+
+## Known limitations
+
+- **"Used by - Build Schema" often resolves to 0 links on real apps.** Traced to
+  `Protocol.loader` (in `@servable/tools`) returning `null` whenever a `Protocol` instance never
+  received an `addInstanceIfNeeded()` call - the exact call site that fails already carries the
+  original author's own `#TODO: protocol.loader` comment. The static "Used by" group (from
+  `protocols.js`) is unaffected and always available.
+- **Community protocol search/install isn't implemented anywhere yet** - see
+  [`servable protocol community`](./commands/protocol#community-protocols). The extension's roadmap
+  treats this as blocked on that registry actually existing, not something to build ahead of it.
+- Not yet on the VS Code Marketplace.
+
+## Related
+
+- [Using the VS Code extension](../guides/using-the-vscode-extension)
+- [`servable protocol` command reference](./commands/protocol)
+- [Packages](./packages)
