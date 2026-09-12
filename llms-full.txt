@@ -1094,6 +1094,7 @@ Use guides when you already understand the basics and want to complete a specifi
 - [Jobs and background work](./jobs-and-background)
 - [Local development with Docker](./local-development)
 - [Debugging boot failures](./debugging-boot-failures)
+- [Using the VS Code extension](./using-the-vscode-extension)
 
 ---
 
@@ -1574,6 +1575,88 @@ export default class ServableApp extends Servable.App.Object {
 
 ---
 
+## Using the VS Code extension
+
+The [Servable VS Code extension](https://github.com/servable-core/vscode) puts protocol browsing,
+app structure, server status, and protocol scaffolding directly in the editor. See
+[VS Code Extension](../reference/vscode-extension) for the exact technical reference; this page
+walks through actually using it.
+
+### Install it
+
+Not yet on the VS Code Marketplace - install a packaged build:
+
+```bash
+git clone https://github.com/servable-core/vscode.git
+cd vscode
+npm install
+npm run package        # produces servable-vscode-<version>.vsix
+code --install-extension servable-vscode-<version>.vsix
+```
+
+Reload any VS Code window already open on a Servable app after installing or updating it -
+extensions installed via the CLI don't hot-load into windows that were already open.
+
+### Open a Servable app
+
+The extension only activates in a workspace with a `servable.config.js` at its root - the same file
+the app's own `index.js` passes into `launch()`. Open one (`backend/main`, for example) and a
+polar-bear icon appears in the Activity Bar.
+
+### Check server status
+
+Click the Servable icon, open **Status**. It shows the resolved App ID, host/port, public URI,
+engine mount, and whether a master key is configured (never its value). Use the pulse icon in the
+view's title bar to ping `<serverHost>:<serverPort>/health-check` and see whether the real process
+is actually up.
+
+### Browse app structure
+
+Open **App**:
+
+- **Models** lists every model under `app/models/`; expand one to see which protocols it declares in
+  its `protocols.js`.
+- **Routes** is a plain file tree over `app/routes/` - expand folders, click a file to open it.
+
+### Browse protocols
+
+Open **Protocols**, grouped by npm scope (`@adoucoure`, `@servable-community`, unscoped). Expand any
+protocol to see:
+
+- **Used by** - which models actually use it, available immediately.
+- Its own files (`classes/`, `lib/`, `triggers/`, etc.) - click any to open it.
+
+Click the protocol itself (not a child row) to open a rendered summary of its manifest.
+
+Run **Servable: Build Schema** (the class-icon button in the Protocols title bar) to additionally
+resolve which *classes* a real schema build associates with each protocol. On most real apps today
+this currently resolves to 0 additional links - a known upstream issue, not a sign anything is
+broken in your app. See
+[VS Code Extension → Known limitations](../reference/vscode-extension#known-limitations) for why.
+
+### Create a new protocol
+
+In the **Protocols** view's title bar, click the "+" (New Protocol). Enter a protocol id (plain
+`commentable`, or scoped `@myscope/commentable`) and a description. This runs
+[`servable protocol add`](../reference/commands/protocol#add-a-protocol-directly-inside-an-app)
+against your workspace and scaffolds it at `protocols/<protocolId>`. Progress and any CLI output
+land in the **Servable CLI** output channel; the Protocols tree refreshes automatically once it
+finishes.
+
+### Eject a protocol
+
+Right-click a protocol and choose **Eject Protocol…**. Pick a destination folder, then choose whether
+to also remove it from this app (updating references) or leave the in-app copy in place. This runs
+[`servable protocol eject`](../reference/commands/protocol#eject-a-protocol-out-of-an-app).
+
+### Related
+
+- [VS Code Extension reference](../reference/vscode-extension)
+- [`servable protocol` command reference](../reference/commands/protocol)
+- [Overview](./overview)
+
+---
+
 ## License
 
 :::info
@@ -1675,6 +1758,105 @@ At this point the local Servable docker compose has been launched and you can ac
 
 ---
 
+## Authentication: sessions, cookies, and refresh tokens
+
+Servable supports two authentication mechanisms side by side: Parse's own session-token cookie
+(always available), and an opt-in access-token/refresh-token pair layered on top of it. Both are
+resolved by the same [route request handling](./route-handling) path, and a route's `requireUser`/
+`requireStepUp` options work identically regardless of which one authenticated the request.
+
+### Turning on access/refresh tokens
+
+Set `AUTH_JWT_SECRET` (generate with `openssl rand -hex 32`). Its presence is the single switch
+that enables the whole feature - there is deliberately **no default secret**: signing or verifying
+access tokens with a guessable fallback would be a silent auth bypass, so every function in this
+system (`mintSessionTokens`, `refreshSessionTokens`, the request resolver) treats a missing secret
+as "this deployment hasn't opted in" and falls back to the legacy session-cookie-only path, rather
+than failing closed for everyone.
+
+```bash
+AUTH_JWT_SECRET=<openssl rand -hex 32>
+AUTH_ACCESS_TOKEN_TTL_SECONDS=3600            # default: 1 hour
+AUTH_REFRESH_TOKEN_TTL_SECONDS=2592000        # default: 30 days
+AUTH_REFRESH_TOKEN_TTL_REMEMBER_ME_SECONDS=7776000  # default: 90 days
+AUTH_DEVICE_BINDING_ENABLED=1                 # default on; '0' disables
+AUTH_STEP_UP_FRESHNESS_SECONDS=300            # default: 5 minutes
+```
+
+### How a request is authenticated
+
+`userResolver` (called for every route, feeding `requireUser`/`requireStepUp`) checks, in order:
+
+1. **`Authorization: Bearer <token>`** - only if `AUTH_JWT_SECRET` is set. The token is a
+   hand-rolled HMAC-SHA256 JWT (`{ sub: userId, sid: sessionId, exp, iat }`, no external JWT
+   dependency - this system never needs asymmetric/JWKS verification, only symmetric signing).
+   Verified purely by signature and expiry; no database lookup is needed to trust it, only to
+   fetch the actual `_User` object by `sub`. If the token is valid but the user no longer exists,
+   this falls through to the legacy check below rather than failing the whole request.
+2. **The `x-servable-session-token` value** - from a custom header, then `req.cookies`, then a raw
+   `Cookie` header parse, in that priority order. Looked up against `_Session` (must be
+   non-expired), same as any Parse app.
+
+Either path stamps `user._authSessionId` (transient, request-scoped, never persisted) with the
+`_Session` id that authenticated the request - this is what lets `requireStepUp` check freshness
+against the *specific* session without a second lookup.
+
+### Minting and refreshing the pair
+
+`Servable.App.User.mintSessionTokens({ user, sessionToken, response, rememberMe, cookieDomain,
+exposeRefreshToken })` - called after a normal Parse login (`logIn`/`logInWith`), **not** a
+replacement for it. It:
+
+- Generates a random refresh token (`crypto.randomBytes(32)`), stores only its SHA-256 hash on the
+  `_Session` (`refreshTokenHash`), never the raw value.
+- Sets the raw refresh token as an `httpOnly` cookie (`secure`/`sameSite: 'None'` in production,
+  relaxed in dev), `maxAge` matching `refreshTokenTTL` (`rememberMe` selects the 30-day vs 90-day
+  TTL).
+- Mints a short-lived access-token JWT for immediate use.
+- Returns `{ accessToken, refreshToken, expiresIn, tokenType: 'Bearer', refreshTokenExpiresIn }` -
+  `refreshToken` in the response body is redacted to the literal string `'exists'` unless
+  `exposeRefreshToken` is explicitly set (only for a verified custom-domain proxy that needs the
+  raw value to mint its own same-origin cookie, since a custom domain's own `httpOnly` cookie can
+  never be set directly from the platform domain's response - same cross-`eTLD+1` restriction as
+  the session cookie itself).
+
+`Servable.App.User.refreshSessionTokens({ refreshToken, response, cookieDomain, installationId,
+exposeRefreshToken })` exchanges a valid refresh token for a new access token **and rotates the
+refresh token in the same operation**:
+
+- The provided token is hashed and looked up directly against `_Session.refreshTokenHash` - no
+  session id needs to travel alongside the cookie.
+- On success, a brand new refresh token is generated and stored, replacing the old hash. Since only
+  the most recently issued hash is ever valid, **a stolen-and-later-replayed old refresh token
+  fails outright the moment the legitimate client refreshes even once** - there's no window where
+  both the old and new token work.
+- **Device binding** (`AUTH_DEVICE_BINDING_ENABLED`, on by default): if the caller sends
+  `installationId` and the session has one bound already, they must match or the refresh is
+  rejected (`401`, "bound to a different device"). This only enforces when *both* sides are
+  present - a session or request missing an installation id fails open rather than locking out a
+  legitimate user over incomplete data. It's real defense-in-depth (a leaked refresh token alone
+  isn't enough without the matching device cookie too), not equivalent to hardware-backed device
+  attestation - a full XSS compromise can read both values.
+- Failure modes are explicit thrown objects with real HTTP codes: `501` if
+  `AUTH_JWT_SECRET` isn't configured at all, `401` for no token / invalid token / expired token /
+  device mismatch.
+
+### Step-up authentication
+
+`Servable.App.User.checkStepUpFreshness({ user })` (used by `requireStepUp`, see
+[route handling](./route-handling)) checks `_Session.stepUpAt` against
+`AUTH_STEP_UP_FRESHNESS_SECONDS` (default 5 minutes) - freshness is tracked **per session, not per
+user**, so confirming step-up on one device never silently satisfies it for a different, possibly
+stolen session elsewhere. There's no session at all (no `_authSessionId` stamped, or the session
+lookup fails), or no `stepUpAt` ever recorded, both simply mean "not fresh" rather than an error.
+
+### Related
+
+- [Route request handling](./route-handling)
+- [Transactions](./transactions)
+
+---
+
 ## Cloud Function Contracts
 
 This page documents how protocol cloud functions are named and registered at runtime.
@@ -1748,25 +1930,36 @@ servable app new
 #### Options
 ```bash
   -n, --appName              App name                                                      [string] [default: "MyAppName"]
-      --appDescription       App description                                          [string] [default: "A Servable service"]
-      --bridgeframeworkId    Engine to use                  [string] [default: "@servable/parse-server-engine"]
+      --appDescription       App description                                             [string] [default: "A Servable app"]
+      --engineId             Engine to use, e.g. @servable/parse-server-engine                                    [string]
   -i, --installDependencies  Install dependencies                                                [boolean] [default: true]
-  -l, --license              License                                                             [string] [default: "MIT"]
+  -l, --license              License ("MIT", "Apache 2.0", ...)                                  [string] [default: "MIT"]
   -p, --packageManager       Package manager ('npm', 'yarn' or 'pnpm')                           [string] [default: "npm"]
   -g, --gitInit              Initialize a git repository                                         [boolean] [default: true]
   -d, --destination          Choose a destination                                                                 [string]
-      --appPort              App port                                                             [number] [default: 1387]  
+      --appPort              App port                                                             [number] [default: 1387]
 ```
+
+`--engineId` picks which package's engine adapter the scaffolded app imports and installs. There is
+currently one published engine, `@servable/parse-server-engine`, but the field is asked freely
+(no hardcoded default) rather than fixed to it, since this is exactly the extension point a second
+engine implementation would plug into.
 
 #### Example
 ```bash
-servable app new --appName='MyApp' --adapter='@servable/cli'
+servable app new --appName='MyApp' --engineId='@servable/parse-server-engine'
 ```
 
 #### Help
 ```bash
 servable app -h
 ```
+
+### Related
+
+- [Servable vs Express, Fastify, NestJS, and plain Parse Server](../../concepts/comparison)
+- [`servable protocol` command reference](./protocol)
+- [`servable model` command reference](./model)
 
 ---
 
@@ -1776,8 +1969,11 @@ import BashTabs from '@site/src/components/generic/bashTabs'
 
 
 
+Manages the CLI's stored session against the Servable registry (used by `protocol community
+use`/`submit`). Credentials are stored locally via the CLI's own store, keyed by the registry host.
+
 ### Status
-Checks authentication status with Servable server.
+Checks whether the CLI currently holds a stored session.
 ```bash
 servable auth status
 ```
@@ -1790,52 +1986,50 @@ N/A
 servable auth status
 ```
 
-#### Help
-N/A
-
 ### Login
-Log into Servable server.
+Logs into the Servable registry and stores the resulting session.
 ```bash
 servable auth login
 ```
 
 #### Options
 ```bash
-      --registryUsername      Username                                                                            [string]
-  -u, --registryPassword      Password                                                                            [string]
-      --registrySessionToken                                                              [number] [default: 1387]  
+  --registryUsername       Username (stored locally once entered)   [string]
+  --registryPassword       Password                                 [string]
+  --registrySessionToken   Session token (stored locally once obtained)   [string]
 ```
+
+These are prompted interactively if not passed as flags; `registryUsername` and
+`registrySessionToken` are persisted to the local CLI store so subsequent commands (`auth status`,
+`protocol community use`/`submit`) don't need to log in again.
 
 #### Example
 ```bash
-servable auth login --registryUsername myemail@gmail.com --registryPassword XXXX-XXXX
-```
-
-#### Help
-```bash
-servable auth login -h
+servable auth login --registryUsername myemail@gmail.com
 ```
 
 ### Logout
-Logout of Servable server.
+Clears the locally stored session.
 ```bash
 servable auth logout
 ```
 
 #### Options
 ```bash
-    --registryConfirmLogout  Logout of Servable                                                           [number] [default: 1387]  
+  --registryConfirmLogout   Confirm logout   [boolean] [default: false]
 ```
+
+Prompted as a confirmation if not passed; does nothing if you're not currently logged in. On
+confirmation it clears the stored username, password, and session token.
 
 #### Example
 ```bash
 servable auth logout
 ```
 
-#### Help
-```bash
-servable auth logout -h
-```
+### Related
+
+- [`servable protocol` command reference](./protocol)
 
 ---
 
@@ -1936,6 +2130,21 @@ servable protocol community use
 
 Wires an existing protocol from Servable's community registry into an app, prompting for the
 protocol, target app, and class to attach it to.
+
+```bash
+servable protocol community submit
+```
+
+Requires being logged in ([`servable auth login`](./auth)). Publishes a protocol to the community
+registry.
+
+#### Options
+```bash
+  --protocolPath          Protocol to submit                                      [string]
+  --registryUpdate        Update protocol in registry     [boolean] [default: false]
+  --registrySubmitMode    "create" or "update"     [string] [default: "create"]
+  --registryUniqueRef     Registry unique reference                               [string]
+```
 
 `servable protocol community list` exists but is not yet functional. It currently only checks
 that you're logged in and does nothing further; there is no confirmed registry backend behind it
@@ -2298,6 +2507,57 @@ If startup fails:
 
 ---
 
+## Model class (`Servable.App.Object`)
+
+## Model class (`Servable.App.Object`)
+
+A Servable model is a class extending `Servable.App.Object`, which the Parse Server engine wires
+as a `Proxy` around `Parse.Object` rather than a subclass or wrapper function - specifically to
+close a real gap in how Parse itself resolves classes.
+
+### The gap it closes
+
+Parse has two ways to get an instance of a registered class, and only one of them actually applies
+protocol mixins:
+
+- `new Parse.Object('Publication')` - a plain `ParseObject`. The constructor only assigns
+  `this.className`; it never consults the subclass registry, so none of the protocol mixins
+  registered via `Parse.Object.registerSubclass` are present.
+- `ParseObject.fromJSON({...})` - resolves through the class map, mixins and all. This is the path
+  query results and `fetch()` go through.
+
+That asymmetry meant code had to save an object, then re-query it, just to get access to its own
+protocol methods ("save, then fetch it back to get the mixins") - an extra round trip that also
+discards correct in-memory state for a freshly-read copy, and a mistake that's easy to make since
+nothing warns you `x.someProtocolMethod is not a function` on a brand-new object is this specific
+cause.
+
+### What actually happens
+
+`new Servable.App.Object('ClassName', attrs)` looks up `ClassName` in Parse's own live class map;
+if a registered subclass exists (and isn't just `Parse.Object` itself), it constructs *that*
+subclass with no arguments, then applies `attrs` via `.set()` afterward - because every registered
+class in this codebase is a zero-arg ES class that hardcodes its own class name in its constructor
+(`constructor() { super('Publication') }`), so anything passed positionally would otherwise be
+silently dropped. If no subclass is registered yet (or the "subclass" is just `Parse.Object`),
+behavior falls through unchanged to Parse's own constructor - nothing is lost for an unregistered
+class name.
+
+This is implemented as a `Proxy`, not `Parse.Object.extend()`, on purpose: `extend()` ends with an
+unconditional class-map write, so calling it for a typo'd or not-yet-registered class name would
+silently register a fresh empty subclass and permanently pollute the registry. A `Proxy` only
+intercepts `construct`; every static (`extend`, `registerSubclass`, `saveAll`/`destroyAll` -
+including the transaction module's monkey-patched versions - `fromJSON`, `createWithoutData`, ...)
+and `instanceof` checks against subclass instances keep working exactly as they do on
+`Parse.Object` itself, since a Proxy forwards everything it doesn't explicitly intercept.
+
+### Related
+
+- [Model lifecycle](./lifecycle)
+- [Transactions](../transactions)
+
+---
+
 ## Model Lifecycle
 
 This page describes the runtime lifecycle around model classes in Servable.
@@ -2322,16 +2582,36 @@ Per class, current wired trigger operations are:
 - `beforeDelete`
 - `afterDelete`
 
-`beforeFind` and `afterFind` are present in code comments but not active in default wiring.
+`beforeFind` and `afterFind` are present in code (commented out) but not active in default wiring.
+`_Session` is explicitly skipped entirely - no triggers are ever wired for it.
+
+Class-level trigger methods are looked up under both casings (`beforeSave` and `beforesave`,
+`afterDelete` and `afterdelete`, etc.) - either naming convention works.
 
 ### Trigger execution order
 
-For each lifecycle event:
+For each lifecycle event: the protocol-level trigger handler runs first, then the class-level
+trigger handler, when present.
 
-1. Protocol trigger handler runs.
-2. Class-level trigger handler runs when present.
+For `beforeSave`, `beforeDelete`, and `afterDelete`, both calls are properly `await`ed inside a
+`try`/`catch` that logs `[Class <name>] ⚠️ <event>` on failure - an error there is caught and
+visible.
 
-For `afterSave`, current wiring executes trigger calls without awaiting completion.
+**`afterSave` is different, and it matters**: both the protocol-level and class-level `afterSave`
+calls are made *without* `await`, still inside the same `try`/`catch` wrapper. Because the calls
+aren't awaited, a promise rejection from either one happens after that `try`/`catch` has already
+exited - it is never caught by it. Concretely: **an error thrown inside an `afterSave` trigger
+(protocol- or class-level) does not get logged by the `[Class <name>] ⚠️ afterSave` handler at
+all**; it becomes a silent unhandled promise rejection instead. This is the exact same class of gap
+documented in [Route and job contracts](../route-job-contracts) for `Route.define()` - an
+async function called without `await` inside a try/catch that therefore cannot catch what it
+throws. If an `afterSave` side effect needs to be reliable and observable on failure, don't assume
+this wiring's own `catch` will tell you when it breaks.
+
+The whole registration function itself is wrapped in one more try/catch that swallows
+`ERR_MODULE_NOT_FOUND` silently (no trigger module for this class is a normal, expected case) but
+logs any *other* error and continues - meaning a class whose trigger module fails to import for a
+different reason ends up with no triggers wired at all, with only a console error to notice it by.
 
 ### Practical guidance
 
@@ -2348,9 +2628,11 @@ For `afterSave`, current wiring executes trigger calls without awaiting completi
 
 ### Related
 
+- [Model class](./class)
 - [Runtime lifecycle](../lifecycle)
 - [Protocol triggers](../protocol/triggers)
 - [Protocol schema](../protocol/schema)
+- [Route and job contracts](../route-job-contracts)
 - [Jobs and background work](../../guides/jobs-and-background)
 
 ---
@@ -2379,6 +2661,7 @@ Servable is still experimental and its API may change in the future.
 - Engine: core runtime API domains such as object and query behavior.
 - Protocol: protocol package layout and declaration reference.
 - Packages: official package catalog and responsibilities.
+- VS Code Extension: editor integration for protocols, app structure, status, and scaffolding.
 
 ### Recommended usage
 
@@ -2411,26 +2694,30 @@ import ProtocolWidget from '@site/src/components/domain/widgets/protocol.js'
 
 
 
-### [Servable Server](https://github.com/servable-community/servable-engine)
+### [Servable Server](https://github.com/servable-core/server)
 
-The servable server is responsible for all the Servable related operations on a servable template project.
-It is available as an npm dependency.
+`@servable/server` is the orchestrator: it computes the schema from every protocol applied to
+your models, runs the docker-compose system launch, and wires each protocol's lifecycle (seed,
+config, routes, jobs, triggers, services) on top of a framework engine.
 
-### [Servable Manifest](https://github.com/servable-community/servable-manifest)
+### [Servable Tools](https://github.com/servable-core/tools) {#servable-tools}
 
-The Servable manifest is a utility that builds a protocol's manifest and documents it.
-It is available as an npm dependency.
+`@servable/tools` is the schema/manifest engine used by both the server and the CLI: it builds and
+validates the schema from a protocol graph, compiles and diffs the committed schema artifact
+(`servable schema build`/`plan`/`apply`/`contract`), and extracts a protocol's manifest for
+generated documentation. See [`@servable/tools` reference](./tools) for the full API.
 
-### [Servable Parse Server Adapter](https://github.com/servable-community/parse-server-engine)
+### [Servable Parse Server Engine](https://github.com/servable-core/parse-server-engine)
 
-The Servable Parse Server Adapter is an example of a engine.
+The currently only implemented engine: the adapter that lets Servable orchestrate protocols on
+top of Parse Server, implementing Servable's engine API (Object, Query, Auth, Job, ...).
 
-### [Servable CLI (yeoman generator)](https://github.com/servable-community/generator-servable)
+### [Servable CLI](https://github.com/servable-core/cli)
 
-The servable CLI is responsible for scaffolding and manipulating servable and protocol projects.
-
-It is available as an npm package. It uses under the hood:
-- the Servable server 
+The Servable CLI scaffolds and manipulates Servable apps and protocols. See
+[CLI command reference](./commands/install) for every command. It uses under the hood:
+- `@servable/server`
+- `@servable/tools`
 - the Servable Protocols Registry API
 
 ### [Servable Registry](https://servable.app)
@@ -2446,6 +2733,12 @@ It serves a public api at api.servable.app
 The servable dashboard is a fork of the Parse Dashboard aimed at providing the best Servable experience.
 
 It is available with the CLI when launching a full-fledged local app.
+
+### [Servable VS Code Extension](https://github.com/servable-core/vscode)
+
+An editor extension surfacing protocol resources, app structure, server status, and protocol
+scaffolding directly in VS Code. Not yet published to the VS Code Marketplace. See
+[VS Code Extension](./vscode-extension) for the full reference.
 
 ### Servable Widgets
 
@@ -2969,45 +3262,71 @@ not any individual protocol's file, is what the running server validates at boot
 
 ## Seed
 
-Protocol seed defines initial data and setup records created during startup.
+Seed runs once per boot, after class registration and before routes/jobs/functions are wired. A
+protocol declares a seed for itself (`type: 'protocol'`) and, independently, for each managed
+class it contributes (`type: 'class'`) - each one picks its own mode.
 
-### Purpose
+### Manual vs auto seed
 
-Use seed modules to bootstrap required data that your protocol needs to operate.
+Set per protocol or per class (`protocol.loader.seedMode()` / `classSeedMode({ className })`):
 
-Typical examples:
+- **Manual** (the default): a plain function, called with `operationProps` on every boot. There is
+  no built-in state tracking for manual seeds - if you need "only create if missing" behavior,
+  write it into the function yourself (the idempotent `CREATE TABLE IF NOT EXISTS`-style pattern
+  used by several protocols' own bootstrap functions is exactly this).
+- **Auto**: declarative - you provide `{ data, transformer, validator, uniqueRef }` and the seed
+  system tracks completion for you in the utils database, so it does not re-run once successful.
 
-- Default app-level records.
-- Baseline permission or role records.
-- Lookup data required by protocol routes or services.
+### How auto-seed decides whether to re-run
 
-### Seed design rules
+Every auto-seed candidate gets a persisted `SeedState` record (`Initial` → `Loading` →
+`LoadedSuccessfully` | `ErrorLoading`), keyed by the protocol or class id. On each boot, the seed
+system computes a hash of:
 
-1. Keep seed operations idempotent.
-2. Do not duplicate existing records.
-3. Avoid heavy one-time migrations in seed logic.
-4. Keep environment-specific values in configuration, not hardcoded in seed files.
+```
+sha256({ data, transformer: transformer.toString(), validator: validator?.toString(), uniqueRef: uniqueRef?.toString() })
+```
 
-### Recommended implementation flow
+and skips re-seeding only if the state is already `LoadedSuccessfully` **and** the hash matches
+what was recorded last time. Because the hash includes `transformer.toString()` and
+`validator.toString()`, changing the *logic* of your transformer or validator function - not just
+the raw `data` - is enough to trigger a re-seed on the next boot, even if the data itself didn't
+change.
 
-1. Add seed files to your protocol package.
-2. Start the app locally and confirm seed phase runs once as expected.
-3. Validate the created records through API or dashboard.
-4. Deploy to staging before production.
+### Dependency ordering
+
+A seed candidate can declare `metadata.dependencies: [{ id }]`, naming other seed candidates (by
+protocol or class id) that must run first. The seed orchestrator seeds dependencies recursively,
+depth-first, before the dependent, and tracks a per-boot cache so nothing is seeded twice even if
+several candidates depend on the same one. If a declared dependency isn't found among this boot's
+candidates, that branch is silently skipped rather than erroring.
+
+### Design rules
+
+1. Keep manual seeds idempotent yourself; nothing else will make them safe to re-run.
+2. Auto-seed's re-run detection is content-and-logic based (see above) - don't rely on it skipping
+   just because you didn't touch the data file.
+3. Keep environment-specific values in configuration, not hardcoded in seed files.
+4. Use `metadata.dependencies` rather than relying on declaration order when one seed's data
+   depends on another's having already run.
 
 ### Troubleshooting
 
 If startup succeeds but expected records are missing:
 
-1. Check startup logs for seed phase execution.
-2. Verify protocol declaration on target model.
-3. Confirm seed conditions are satisfied.
+1. Check startup logs for the seed phase (`Launch > Seed > Start` / `> End`).
+2. Confirm the protocol/class actually declares a seed mode - a candidate with no seed
+   declaration produces nothing, silently.
+3. For auto-seed, check the persisted `SeedState` for that id; an `ErrorLoading` state means a
+   previous attempt threw and needs investigating directly rather than assuming a fresh retry will
+   just work.
 
 ### Related
 
 - [Configurations](./configurations)
 - [Service](./service)
 - [Schema](./schema)
+- [Transactions](../transactions)
 
 ---
 
@@ -3408,6 +3727,146 @@ const destroyItemAsFile = async i => {
 
 ---
 
+## Route request handling: params, auth guards, cache, rate limiting, errors
+
+[Route and job contracts](./route-job-contracts) documents the fields a route declares. This page
+documents what actually happens to a request between Express receiving it and your `handler`
+being called - for both `method: 'get'`/`'post'`/etc HTTP routes and `method: 'function'` (Parse
+Cloud Function-style) routes, which share this exact same logic.
+
+### What your handler receives
+
+```js
+handler: async ({ user, request, params, response, next, native, ...servableArguments }) => {}
+```
+
+- **`request`**: a sanitized wrapper (`method, params, query, headers, url, socket, complete,
+  aborted, baseUrl, files, file, body, native`) - `request.params` here is the route's **path**
+  params (`/users/:id` → `{ id }`), and `request.query` is the raw query string.
+- **`params`**: **not** the same thing as `request.params`. This is built from the query string
+  (`buildParamsWithTraceContext`), with W3C trace-context fields merged in automatically: if the
+  request carries a `traceparent` and/or `baggage` header, `trace_id`/`span_id`/`traceparent`/
+  `baggage` are added to `params` (without overwriting same-named query values that were already
+  present). If you need path params, read `request.params`, not `params`.
+- **`user`**: resolved via a `userResolver` your app supplies through `servableArguments` (the
+  function passed at route registration); `undefined` if there's no valid session or no resolver.
+- **`native`**: the raw `{ request, response, next }` - the actual Express objects, for anything
+  the wrapper doesn't expose.
+- Whatever your `servableArguments` function returns is spread directly into the handler's props
+  alongside `user`/`request`/`params`/`response`/`next`/`native`.
+
+A truthy return value is sent as the response body with `response.status(200).send(result)`. If
+your handler already sent a response itself (e.g. streaming, custom status codes), return nothing.
+
+### `requireUser` and `requireStepUp`
+
+Both are options on the route definition, both are `false` by default, and they're checked
+independently, in this order:
+
+1. **`requireUser: true`** - if no `user` was resolved, throws `{ code: 209, message: "invalid
+   session token" }` before your handler ever runs.
+2. **`requireStepUp: true`** - only checked if a user *was* resolved (a route can't demand
+   step-up from a request that isn't even authenticated). Calls
+   `Servable.App.User.checkStepUpFreshness({ user })`; if it returns falsy, throws
+   `{ code: 449, message: "Step-up authentication required" }`.
+
+The two codes are deliberately different: **209** means "not logged in, redirect to login."
+**449** ("Retry With") means "you *are* logged in, but this specific action needs you to prove
+your identity again" (a fresh password/MFA prompt that then retries the same request) - a client
+needs to react very differently to each, so collapsing them into one error code would lose
+information the frontend actually needs.
+
+### Exception handling
+
+Any thrown value (`Error`, or a plain `{ code, message }` object - both work, since Servable
+routes are typically written to throw plain objects for expected error conditions) is caught and
+turned into:
+
+```json
+{ "error": "<message>" }
+```
+
+sent with `response.status(code).json(...)`. Rules:
+
+- `code` defaults to **500**, not the `520` used in some older code. `520` was changed
+  specifically because Cloudflare (and most CDN/proxy layers) treats HTTP 520 as *its own*
+  synthetic "unknown error from origin" status - a handler that threw a bare `Error` with no
+  `.code` produced a well-formed 520 response that then read, at the client, as a CDN-side
+  failure instead of an application error. This cost real debugging time chasing a
+  Cloudflare-side explanation for what was actually this fallback firing.
+- `message` defaults to `"An error occurred"` if the thrown value has none.
+- A `messageId` field is computed on the internal error object but is **not** included in the
+  JSON actually sent to the client - only `error` (the message string) is. If you need a
+  machine-readable error identifier reaching the client, don't rely on `messageId` as currently
+  wired.
+
+### Route-level cache
+
+```js
+cache: {
+  configurations: [
+    { storage: 'inMemory', window: 10 },
+    { storage: 'redis', window: 60, template: 'userExists' },
+  ]
+}
+```
+
+- `storage`: `'inMemory'`/`'memory'` or `'redis'` (case-insensitive). Anything else resolves to no
+  caching at all.
+- Multiple `configurations` entries let a route cache differently depending on the requester:
+  `template: 'userExists'` only applies that configuration when the request carries a session
+  token (falls through to the next matching configuration, or no cache, otherwise);
+  `'userDoesNotExist'` is the inverse. The first configuration with no `template` at all is the
+  fallback.
+- The cache key is the normalized request URL (query params sorted, and a fixed set of
+  tracing/correlation keys - `trace_id`, `span_id`, `traceparent`, `request_id`,
+  `correlation_id`, and a few aliases - stripped before hashing), plus the session token when a
+  `userExists`-templated configuration is in play. Two requests differing only by trace headers
+  or query-param order share the same cache entry.
+- Send `x-servable-reset-cache` (any truthy value) as a request header to bypass the cache for
+  that one request.
+- **`window` behaves differently between backends when it's `0` or otherwise falsy**: the
+  in-memory backend passes an `undefined` TTL to `memory-cache` in that case, which means *cache
+  forever, no expiration*. The Redis backend explicitly checks `ttlMs > 0` and, if not, **skips
+  caching entirely** for that response. The same `window: 0` config is "cache forever" on one
+  backend and "never cache" on the other - confirmed by reading both implementations directly,
+  not documented anywhere in code comments. Set an explicit positive `window` if you rely on
+  expiry, and don't assume the two backends behave the same at the edges.
+- The Redis backend lazily creates one shared client per process (from `process.env.APP_REDIS_URI`
+  unless overridden) and reuses it across every cached route; if Redis is unreachable, caching is
+  silently skipped (request proceeds uncached) rather than the request failing.
+
+### Rate limiting
+
+```js
+rateLimiting: {
+  type: 'fixedByIp',
+  params: {
+    limit: 100,      // default 100000
+    window: 1000,    // ms, default 100
+    message: 'Too many requests',
+    standardHeaders: true,  // RateLimit-* headers
+    legacyHeaders: true,    // X-RateLimit-* headers
+  }
+}
+```
+
+Only `type: 'fixedByIp'` is implemented today (built on `express-rate-limit`); any other `type`
+resolves to a no-op passthrough. `xForwardedForHeader` validation is deliberately disabled
+(`validate: { xForwardedForHeader: false }`) to avoid `express-rate-limit`'s own
+`ERR_ERL_UNEXPECTED_X_FORWARDED_FOR` throwing when a proxy sits in front of the app without the
+Express `trust proxy` setting matching it exactly - see the `express-rate-limit` docs linked in
+the source for the exact failure mode this works around.
+
+### Related
+
+- [Authentication: sessions, cookies, and refresh tokens](./auth)
+- [Route and job contracts](./route-job-contracts)
+- [Cloud Function Contracts](./cloud-function-contracts)
+- [Trigger behavior caveats](./trigger-behavior-caveats)
+
+---
+
 ## Route and Job Contracts
 
 This page summarizes the effective runtime contracts for protocol routes and jobs.
@@ -3465,9 +3924,286 @@ This page summarizes the effective runtime contracts for protocol routes and job
 
 ### Related
 
+- [Route request handling: params, auth guards, cache, rate limiting, errors](./route-handling)
 - [Protocol routes](./protocol/routes)
 - [Protocol jobs](./protocol/jobs)
 - [Troubleshooting by lifecycle](./troubleshooting-lifecycle)
+
+---
+
+## `@servable/tools` reference
+
+import BashTabs from '@site/src/components/generic/bashTabs'
+
+## `@servable/tools` reference
+
+`@servable/tools` is the schema and manifest engine shared by `@servable/server` (which calls it
+at every boot) and the CLI (which calls it for every `servable schema`/`protocol document`
+command). It has no runtime/HTTP concerns of its own: everything here is either pure computation
+over a protocol graph, or file-system reads under a protocol's own directory.
+
+```js
+import {
+  buildSchema, validateSchema,
+  compileArtifact, artifactHashOf, normalizeArtifact,
+  plan,
+  extractProtocol, accessManifest, ManifestEnums, ManifestEnumsV1_1_0,
+  documentProtocol, generateGithubReadme,
+  cleanProtocols,
+  Domain,
+} from '@servable/tools'
+```
+
+### Schema
+
+#### `buildSchema({ servableConfig })`
+
+Walks `servableConfig.rootProtocolPayload` and every protocol it (transitively) declares, resolving
+each one's `schema.json` into a protocol graph. Returns:
+
+```ts
+{
+  protocols,        // every resolved protocol instance in the graph
+  protocolsExcerpt, // per-class summary of which protocols contributed which fields
+  appProtocol,      // the root 'app' protocol instance, with .schema.classes.all
+                     // holding every class's fully-merged schema
+  liveClasses,      // classes any protocol in the graph marks as "live" (LiveQuery-eligible)
+}
+```
+
+This is the expensive step (real disk I/O across every protocol in the graph, and recursive
+resolution of transitive protocol dependencies) - `@servable/server`'s `launch()` calls it once per
+boot and passes the result through rather than recomputing it. See
+[Config Adaptation](./config-adaptation) for where it sits in the launch sequence.
+
+#### `validateSchema({ schema })`
+
+Takes a `buildSchema()` result and checks **protocol version compatibility**, not schema
+correctness or drift. Every protocol instance in the graph declares a `minimumCompatibleVersion`
+for the protocols it depends on; this walks the graph and flags any pair where a dependent's
+required minimum is higher than what's actually resolved:
+
+```ts
+{ isValid: true }
+// or
+{
+  isValid: false,
+  issues: [{ comparison, message }],
+  message: string, // all issues joined, arrow-prefixed
+}
+```
+
+This is unrelated to the compatibility-floor / drift check `@servable/server` performs against
+`servable.schema.json` at boot (see [Schema Migrations](../guides/schema-migrations)) - that's a
+different mechanism, checking the committed artifact against the database's recorded state, not
+protocol-to-protocol version constraints.
+
+#### `compileArtifact({ servableConfig })` / `normalizeArtifact({ appProtocol, protocols })`
+
+Produces the committed artifact shape (`servable.schema.json`'s content) from a schema:
+
+```ts
+{
+  artifactVersion: 1,
+  generatedAt: "<ISO timestamp>",
+  hash: "<sha256 of classes only>",
+  classes: [...],           // every class's className/fields/indexes/classLevelPermissions,
+                             // sorted by className for stable diffing
+  protocolVersions: [...],  // every resolved protocol instance's id/version/minimumCompatibleVersion
+}
+```
+
+`compileArtifact` is the convenience wrapper: it calls `buildSchema()` itself, then
+`normalizeArtifact()`. Use `normalizeArtifact` directly when you already have a `buildSchema()`
+result (this is what the server does at boot, specifically to avoid running `buildSchema()` a
+second time just to check drift).
+
+`hash` covers `classes` only, deliberately excluding `protocolVersions` - confirmed during
+development that which protocol instances get resolved (and therefore what ends up in
+`protocolVersions`) can vary between two builds of byte-identical sources depending on unrelated
+import-order effects, which would make it unsuitable as part of a stable drift-detection hash.
+
+#### `artifactHashOf(artifact)`
+
+Recomputes the same content-only hash from an already-built artifact's `classes` field (ignoring
+`generatedAt`). Used both to produce an artifact's own `hash` and, at boot, to compare a freshly
+compiled artifact's hash against the one committed to git.
+
+#### `plan({ before, after })`
+
+Diffs two artifacts (typically the committed one against a freshly compiled one) and classifies
+every class/field/index/permission change as safe or breaking. This is what `servable schema
+plan`/`apply`/`contract` are built on - see the [`servable schema` command reference](./commands/schema)
+for the full SAFE/BREAKING/pre-deprecated classification and the CLI workflow around it.
+
+### Manifest
+
+The manifest system reads a protocol's own file tree (not its schema) into a structured,
+queryable form - it's what generated documentation is built from.
+
+#### `extractProtocol({ path, dataTemplateType })`
+
+Walks a protocol's (or, with `dataTemplateType: 'class'`, a single class's) directory structure
+against a versioned template (`ManifestEnums.ProtocolEnum`/`ClassEnum`/`SchemaEnum` describe what
+files are expected where - beforeInit, afterInit, functions, triggers, seed, system/docker, and so
+on) and returns:
+
+```ts
+{ reference: {...}, tree: {...} }
+```
+
+`tree` is the structured result; `reference` is a lookup map `accessManifest` uses internally.
+Sets `global.Servable` to a lightweight stand-in (see `Domain.Servable` below) if it isn't already
+set, since a protocol's own files may reference `Servable.App.*` at import time even outside a
+running server.
+
+#### `accessManifest({ path, item, type, variant, mimeType, formatData })`
+
+Given a protocol/class path and an item from `ManifestEnums` (e.g.
+`ManifestEnums.ProtocolEnum.Assets.Icon`), extracts (calling `extractProtocol` internally if not
+already extracted) and returns that specific item from the manifest tree - a single file's content,
+optionally filtered by `mimeType` or `variant` (e.g. the `@2x` icon specifically). Returns `null`
+if the item doesn't exist. This is what backs the "Terms, definitions and components" page's
+`<Definitions>`/`<Manifest>` live widgets on this site, and the `<ProtocolWidget>` component used
+throughout - both read real protocol files through this API rather than embedding static copies.
+
+#### `ManifestEnums` / `ManifestEnumsV1_1_0`
+
+Exports `ProtocolEnum`, `ClassEnum`, `SchemaEnum`, and `DataTemplateType` - the vocabulary
+`extractProtocol`/`accessManifest` use to address specific parts of a protocol's structure (see
+the source for the full tree; both exports currently point at the same `1.0.0` enum module).
+
+### Document generation
+
+#### `documentProtocol({ path, write })` / `generateGithubReadme({ path, write })`
+
+Both are **version-dispatching gateways**, not the generators themselves: they read the protocol's
+own `apiVersion` (from `manifest.json`/`index.json`/`module.json` at the protocol's root) and
+dynamically import the matching implementation from `document/<apiVersion>/all` or
+`document/<apiVersion>/generateGithubReadme`. This is how `@servable/tools` supports multiple
+manifest API versions (`1.0.0`, `1.1.0`) side by side without the caller needing to know which one
+a given protocol targets.
+
+:::caution
+The version resolution (`protocolApiVersion`) currently has an inverted condition: it returns
+`"1.0.0"` when the protocol's declared `apiVersion` **is** a valid semver string, and returns the
+raw (invalid) value through otherwise. In practice this means a protocol that properly declares
+e.g. `"apiVersion": "1.1.0"` is routed to the `1.0.0` generator rather than `1.1.0`. Confirmed by
+reading `src/lib/protocolApiVersion.js` directly; not yet filed as a fix.
+:::
+
+`servable protocol document` (see the [CLI command reference](./commands/protocol)) is a thin
+wrapper over `documentProtocol({ path, write: true })`.
+
+### `cleanProtocols(items)`
+
+Deduplicates an array of protocol-like objects by `.id`, preserving first-seen order. Items with no
+`id` at all are never deduplicated against each other (every one is kept) - only items that share
+the same truthy `id` are collapsed to the first occurrence.
+
+### `Domain.Servable`
+
+A minimal stand-in for the real `Servable` runtime class used by `@servable/server` - it exposes
+`Servable.App` (merged from `global.Parse` if present, plus tools' own lightweight `App` shape) and
+a no-op `hydrate()`. It exists so protocol files can be imported and introspected by CLI tooling
+(manifest extraction, schema building) without a real server or engine running, not as a
+substitute for the full runtime object a launched app actually gets.
+
+### Related
+
+- [`servable schema` command reference](./commands/schema)
+- [`servable protocol` command reference](./commands/protocol)
+- [Schema Migrations](../guides/schema-migrations)
+- [Protocol schema](./protocol/schema)
+- [Packages](./packages)
+
+---
+
+## Transactions
+
+`Servable.App.Transaction` is an engine-agnostic taxonomy for grouping several writes into one
+atomic commit. `@servable/server` always wires *some* `Transaction` class (falling back to a base
+implementation that throws a clear "not implemented" error on `commit()`/`rollback()` if the
+engine doesn't provide its own), so `Servable.App.Transaction` is never `undefined`.
+
+### Opening and using a transaction
+
+```js
+const tx = new Servable.App.Transaction({ useMasterKey: true })
+
+await obj1.save({ status: 'done' }, { transaction: tx })
+await obj2.save({ status: 'done' }, { transaction: tx })
+
+const result = await tx.commit()
+// { token, writes, state: 'committed', mode }
+```
+
+- `options` passed to the constructor are engine-specific write options (e.g. `useMasterKey`)
+  applied once, to the whole committed batch, not repeated per call.
+- Two ways to attach a write to a transaction: pass the transaction instance as `{ transaction: tx
+  }` on `save()`/`destroy()`/`saveAll()`/`destroyAll()` (the normal path - the engine recognizes it
+  and defers the write instead of sending it), or call `tx.toWriteOptions(options)` for call sites
+  that don't go through an engine-patched write method (a raw REST/Cloud Code call) - it stamps
+  `context.servableTransactionToken` onto the options so the engine can still correlate the write.
+- `state` moves `open` → `committed` | `aborted` | `failed`. `failed` means `commit()` was
+  attempted and threw; the transaction is over at that point.
+
+### v1 scope: one write kind per transaction
+
+A single transaction may only contain saves, or only destroys, not both. Queuing a destroy on a
+transaction that already has a queued save (or vice versa) throws immediately, rather than
+silently running the two kinds as separate, non-atomic operations. This is a deliberate current
+limitation, not an oversight - an engine that can't guarantee atomicity across mixed write kinds
+must reject rather than fake it.
+
+Queuing the *same* object twice in one transaction is not an error - it's treated as one logical
+write (everything set on it between the two calls goes out together), matching how
+`Parse.Object.saveAll()` itself collapses duplicates. `writes` on the commit result reports writes
+actually sent, not calls enqueued.
+
+### How the Parse Server engine implements it
+
+`Parse.Object.saveAll(objects, { transaction: true })` sends one `POST /batch` request that
+Parse Server wraps in a real MongoDB session (`session.startTransaction()`), which requires MongoDB
+to be running as a **replica set** - a standalone `mongod` cannot commit a session transaction.
+
+#### Standalone MongoDB fallback
+
+Rather than fail outright on a standalone MongoDB, the engine:
+
+1. Checks the actual server topology directly (a `hello` admin command, checking for a `setName`
+   field) - not the commit error, since a standalone-Mongo failure reaches the caller as a
+   generically sanitized Parse "Internal server error" (Parse Server deliberately doesn't leak
+   internal error text), indistinguishable by code/message alone from any other commit failure.
+2. If standalone is *confirmed*, falls back to sending every queued write **individually**
+   (`mode: 'sequential-fallback'` in the commit result) instead of failing - logging a warning that
+   names the fix (migrate to a replica set). This is the old, non-atomic behavior, used only when
+   real atomicity isn't available at all.
+3. Any other commit failure (validation, permissions, a real data error) is rethrown unchanged,
+   never masked as "just no replica set."
+
+The topology check is cached for the process lifetime (topology doesn't change without a restart).
+
+#### A real, subtle bug this engine works around
+
+When the `/batch` HTTP request itself rejects (rather than returning 200 with per-item errors),
+Parse's own `Parse.Object.saveAll()` leaves an internal "pending operations" layer unbalanced on
+every object in that batch - confirmed live against a standalone Mongo: after one failed
+transactional batch, fields set on an instance stayed marked dirty forever, and every subsequent
+`save()` on that same instance resolved successfully while writing nothing. The engine measures
+each object's pending-ops depth before the batch and restores it after a failure, specifically to
+avoid this: a failed batch would otherwise permanently and silently break future writes to any
+object that was in it.
+
+### Rollback
+
+`rollback()` simply discards whatever was deferred and marks the transaction `aborted`; since
+nothing was ever sent to the database, there's no compensating action needed.
+
+### Related
+
+- [`@servable/tools` reference](./tools)
+- [Route request handling](./route-handling)
 
 ---
 
@@ -3563,6 +4299,129 @@ Use this page to map runtime failures to the launch phase where they usually ori
 - [Runtime lifecycle](./lifecycle)
 - [Route and job contracts](./route-job-contracts)
 - [Getting Started troubleshooting](../gettingstarted/troubleshooting)
+
+---
+
+## VS Code Extension
+
+[`servable-core/vscode`](https://github.com/servable-core/vscode) (extension id `servable-core.servable-vscode`)
+surfaces protocol resources, app structure, server status, and protocol scaffolding directly in the
+editor, for a workspace running Servable. Not yet published to the VS Code Marketplace - install it
+from a packaged `.vsix` (see [Using the VS Code extension](../guides/using-the-vscode-extension) for
+the install steps).
+
+### Activation
+
+Activates when the opened workspace contains a `servable.config.js` at its root - the same file an
+app's own `index.js` passes into `launch()`. A workspace without one (for example a bare protocol
+package, or `tests/ui`) never activates the extension.
+
+### Dependency resolution
+
+The extension resolves `@servable/tools`, `@servable/server`, and `@servable/cli` from the **target
+workspace's own** `node_modules` at runtime, rather than bundling its own copies. This guarantees
+whatever the extension shows or runs matches the exact version that workspace actually depends on,
+at the cost of the extension doing nothing useful in a workspace that hasn't run `npm install`.
+
+Resolution for `@servable/cli` specifically goes through `require.resolve.paths()` rather than plain
+`require.resolve('@servable/cli')`: this package's `exports` map points at a `dist/` build that isn't
+guaranteed to exist (a git-branch-pinned dependency's `dist/` may never have been built or committed),
+which makes ordinary resolution throw even though the `bin` script (`src/app.js`) is present and
+runnable. `resolve.paths()` only computes candidate `node_modules` directories - it doesn't try to
+load the package's entry point, so it works regardless of whether the package's own `main`/`exports`
+resolve to anything real.
+
+CLI commands are run by spawning the system's `node` binary (PATH-resolved), never
+`process.execPath`. Inside a VS Code extension host, `process.execPath` is VS Code's own Electron
+helper binary, not a plain Node executable - confirmed by testing that even with
+`ELECTRON_RUN_AS_NODE=1` set, it hangs indefinitely with zero output on real CLI work (likely because
+`process.versions.electron` stays set under that flag, and `@servable/cli`'s `settings-store`
+dependency branches on it toward an Electron-only API with no real Electron app to answer it). A
+plain system `node` binary has none of that ambiguity.
+
+### Views
+
+All three views live under the Servable icon in the Activity Bar.
+
+#### Status
+
+Resolved env config for the workspace: App ID, App Name, Server Host/Port, Public URI, Engine Mount,
+and whether a master key is configured - the master key's actual value is never read or displayed,
+only its presence. A "Ping Health Check" action hits `<serverHost>:<serverPort>/health-check`
+directly (the real bind address), not `publicURI` - `publicURI` can point through a proxy or
+indirection that isn't reachable directly in local dev.
+
+#### App
+
+- **Models**: every directory under `app/models/`, expandable to the protocol ids it declares in its
+  `protocols.js` (imported directly rather than parsed as text, since entries are a plain array of
+  strings and `{ id, params }` objects with no reliable text-parsing shortcut). Clicking a model
+  opens its `class.js`; clicking a protocol entry opens that model's `protocols.js`.
+- **Routes**: a generic recursive file tree over `app/routes/`, click to open - no attempt to import
+  or parse route files, since unlike `protocols.js` they routinely have side-effecting imports and
+  aren't safe to load just to list them.
+
+#### Protocols
+
+Every protocol found under `protocols/**/index.json`, grouped by npm scope. Expanding a protocol
+shows:
+
+- **Used by** - which models declare this protocol, read the same way as the App view's Models
+  section (via each model's `protocols.js`). Available immediately, no build step.
+- **Used by - Build Schema** - which classes a real `buildSchema` call resolved this protocol
+  against, shown only after running the "Build Schema" command. See **Known limitations** below -
+  this currently resolves to 0 links for most real apps.
+- The protocol's own files and folders (`classes/`, `lib/`, `triggers/`, `target/`, etc.), mirrored
+  as a plain file tree, click to open.
+
+Right-click a protocol for "Eject Protocol…"; use the "+" button in the view's title bar for "New
+Protocol".
+
+### Commands
+
+| Command | What it does |
+|---|---|
+| `Servable: Refresh Protocols` | Rescans `protocols/**` from disk. |
+| `Servable: Build Schema` | Hydrates `Servable.App.*` (see below) and calls `@servable/tools`'s `buildSchema`, populating the "Used by - Build Schema" groups. |
+| `Servable: New Protocol` | Runs `servable protocol add` non-interactively against the workspace. |
+| `Servable: Eject Protocol…` | Runs `servable protocol eject`, with a confirmation choice between ejecting only vs. also removing the protocol from the app. |
+| `Servable: Refresh Status` / `Servable: Ping Health Check` | Rescans env config / re-pings the server. |
+| `Servable: Refresh App` | Rescans `app/models/` and `app/routes/`. |
+
+CLI-backed commands stream their process output to a dedicated "Servable CLI" output channel.
+
+### Build Schema and hydration
+
+Calling `@servable/tools`'s `buildSchema` standalone - outside `@servable/server`'s own `launch()` -
+used to fail silently for every class that extends a Servable-provided base class
+(`Servable.App.Object`, etc.), because that base class is only defined after
+`global.Servable.hydrate(...)` runs. The extension replicates that hydration step first. Confirmed by
+testing that this needs **no live database or running server** - only `engine.adaptApp()`'s pure
+class construction, which `@servable/server`'s own `launch()` sequence also doesn't gate behind
+`engine.createApp()` succeeding.
+
+The `Servable` class that does this hydration isn't part of `@servable/server`'s public package
+export (only `launch` is) - the extension reaches it via the same internal path
+`@servable/server`'s own `launch/index.js` uses, since there's currently no supported public
+entrypoint for hydration alone.
+
+### Known limitations
+
+- **"Used by - Build Schema" often resolves to 0 links on real apps.** Traced to
+  `Protocol.loader` (in `@servable/tools`) returning `null` whenever a `Protocol` instance never
+  received an `addInstanceIfNeeded()` call - the exact call site that fails already carries the
+  original author's own `#TODO: protocol.loader` comment. The static "Used by" group (from
+  `protocols.js`) is unaffected and always available.
+- **Community protocol search/install isn't implemented anywhere yet** - see
+  [`servable protocol community`](./commands/protocol#community-protocols). The extension's roadmap
+  treats this as blocked on that registry actually existing, not something to build ahead of it.
+- Not yet on the VS Code Marketplace.
+
+### Related
+
+- [Using the VS Code extension](../guides/using-the-vscode-extension)
+- [`servable protocol` command reference](./commands/protocol)
+- [Packages](./packages)
 
 ---
 

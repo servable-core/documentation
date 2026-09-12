@@ -28,12 +28,14 @@ This file contains links to documentation sections following the llmstxt.org sta
 - [Add a POST route](https://servable-core.github.io/documentation/docs/guides/routes/post): API stands for Application Programming Interface, meaning it's how to communicate with the system you are creating. A route within an API is a spec...
 - [Schema Migrations](https://servable-core.github.io/documentation/docs/guides/schema-migrations): Servable tracks schema changes through a committed artifact, `servable.schema.json`, rather than
 - [Use a protocol](https://servable-core.github.io/documentation/docs/guides/use): ```js
+- [Using the VS Code extension](https://servable-core.github.io/documentation/docs/guides/using-the-vscode-extension): The [Servable VS Code extension](https://github.com/servable-core/vscode) puts protocol browsing,
 - [License](https://servable-core.github.io/documentation/docs/license): :::info
 - [Overview](https://servable-core.github.io/documentation/docs/overview): **Servable** is a protocol-oriented Node.js backend framework built on Parse Server. Instead of scattering a capability like comments, follows, or ...
 - [Quick Start 🚀](https://servable-core.github.io/documentation/docs/quickstart): This quick start will use the @servable/parse-server-engine engine.
+- [Authentication: sessions, cookies, and refresh tokens](https://servable-core.github.io/documentation/docs/reference/auth): Servable supports two authentication mechanisms side by side: Parse's own session-token cookie
 - [Cloud Function Contracts](https://servable-core.github.io/documentation/docs/reference/cloud-function-contracts): This page documents how protocol cloud functions are named and registered at runtime.
-- [$ servable app](https://servable-core.github.io/documentation/docs/reference/commands/app): $ servable app
-- [$ servable auth](https://servable-core.github.io/documentation/docs/reference/commands/auth): $ servable auth
+- [$ servable app](https://servable-core.github.io/documentation/docs/reference/commands/app): `--engineId` picks which package's engine adapter the scaffolded app imports and installs. There is
+- [$ servable auth](https://servable-core.github.io/documentation/docs/reference/commands/auth): Manages the CLI's stored session against the Servable registry (used by `protocol community
 - [Installation](https://servable-core.github.io/documentation/docs/reference/commands/install): Installation
 - [$ servable model](https://servable-core.github.io/documentation/docs/reference/commands/model): Adds a new model (class) to an existing protocol.
 - [$ servable protocol](https://servable-core.github.io/documentation/docs/reference/commands/protocol): Scaffolds, adds, ejects, and documents protocols: the reusable units of behavior (classes,
@@ -43,9 +45,10 @@ This file contains links to documentation sections following the llmstxt.org sta
 - [Engine Overview](https://servable-core.github.io/documentation/docs/reference/engine/overview): Engine APIs are the runtime bridge between Servable orchestration and framework-specific behavior.
 - [Query](https://servable-core.github.io/documentation/docs/reference/engine/query): Query APIs provide read-time filtering, sorting, pagination, and relation loading.
 - [Runtime Lifecycle](https://servable-core.github.io/documentation/docs/reference/lifecycle): This page summarizes the observable startup lifecycle executed by Servable server orchestration.
+- [Model class (`Servable.App.Object`)](https://servable-core.github.io/documentation/docs/reference/model/class): A Servable model is a class extending `Servable.App.Object`, which the Parse Server engine wires
 - [Model Lifecycle](https://servable-core.github.io/documentation/docs/reference/model/lifecycle): This page describes the runtime lifecycle around model classes in Servable.
 - [Overview](https://servable-core.github.io/documentation/docs/reference/overview): Reference pages provide exact technical details: commands, options, and API-level behavior.
-- [Packages](https://servable-core.github.io/documentation/docs/reference/packages): The servable server is responsible for all the Servable related operations on a servable template project.
+- [Packages](https://servable-core.github.io/documentation/docs/reference/packages): `@servable/server` is the orchestrator: it computes the schema from every protocol applied to
 - [Class](https://servable-core.github.io/documentation/docs/reference/protocol/class): ```bash
 - [Models](https://servable-core.github.io/documentation/docs/reference/protocol/classes): ```bash
 - [Config](https://servable-core.github.io/documentation/docs/reference/protocol/configurations): Use configuration for values such as feature toggles, integration endpoints, limits, and policy switches.
@@ -56,13 +59,17 @@ This file contains links to documentation sections following the llmstxt.org sta
 - [Lib](https://servable-core.github.io/documentation/docs/reference/protocol/lib): `lib` contains protocol-internal helpers shared by class, triggers, functions, routes, and jobs.
 - [Routes](https://servable-core.github.io/documentation/docs/reference/protocol/routes): Protocol routes define HTTP endpoints contributed by a protocol.
 - [Schema](https://servable-core.github.io/documentation/docs/reference/protocol/schema): Each protocol declares its structural contributions, classes it manages and fields it adds, in
-- [Seed](https://servable-core.github.io/documentation/docs/reference/protocol/seed): Protocol seed defines initial data and setup records created during startup.
+- [Seed](https://servable-core.github.io/documentation/docs/reference/protocol/seed): Seed runs once per boot, after class registration and before routes/jobs/functions are wired. A
 - [Service](https://servable-core.github.io/documentation/docs/reference/protocol/service): Protocol services expose reusable business operations that can be called from routes, jobs, triggers, or other protocols.
 - [System](https://servable-core.github.io/documentation/docs/reference/protocol/system): A protocol's `system/docker/docker-compose.yaml` declares the external services it needs: a
 - [Triggers](https://servable-core.github.io/documentation/docs/reference/protocol/triggers): Servable registers class triggers through the cloud adapter during class registration.
+- [Route request handling: params, auth guards, cache, rate limiting, errors](https://servable-core.github.io/documentation/docs/reference/route-handling): [Route and job contracts](./route-job-contracts) documents the fields a route declares. This page
 - [Route and Job Contracts](https://servable-core.github.io/documentation/docs/reference/route-job-contracts): This page summarizes the effective runtime contracts for protocol routes and jobs.
+- [`@servable/tools` reference](https://servable-core.github.io/documentation/docs/reference/tools): `@servable/tools` is the schema and manifest engine shared by `@servable/server` (which calls it
+- [Transactions](https://servable-core.github.io/documentation/docs/reference/transactions): `Servable.App.Transaction` is an engine-agnostic taxonomy for grouping several writes into one
 - [Trigger Behavior Caveats](https://servable-core.github.io/documentation/docs/reference/trigger-behavior-caveats): This page highlights runtime caveats for trigger execution and troubleshooting.
 - [Troubleshooting by Lifecycle](https://servable-core.github.io/documentation/docs/reference/troubleshooting-lifecycle): Use this page to map runtime failures to the launch phase where they usually originate.
+- [VS Code Extension](https://servable-core.github.io/documentation/docs/reference/vscode-extension): [`servable-core/vscode`](https://github.com/servable-core/vscode) (extension id `servable-core.servable-vscode`)
 - [Roadmap](https://servable-core.github.io/documentation/docs/roadmap): | Protocol  | Description  | Target version  | Status |
 - [Sponsorship](https://servable-core.github.io/documentation/docs/sponsorship): How to support Servable's development, and what that support goes toward.
 - [1. Bootstrap the blog app](https://servable-core.github.io/documentation/docs/tutorials/blog/1): Create a new Servable app and start it locally.
