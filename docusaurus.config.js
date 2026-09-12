@@ -39,6 +39,19 @@ const config = {
     //   }
     // ],
     'docusaurus-plugin-matomo',
+    [
+      'docusaurus-plugin-llms',
+      {
+        // Generates llms.txt (an index of every doc) and llms-full.txt (the full
+        // content of every doc concatenated) at the site root on each build,
+        // following the llmstxt.org convention - the Docusaurus equivalent of
+        // fumadocs' /llms.txt and /llms-full.txt routes used in web/support.
+        generateLLMsTxt: true,
+        generateLLMsFullTxt: true,
+        title: 'Servable',
+        description: 'A protocol oriented Node JS framework',
+      },
+    ],
     async function myPlugin(context, options) {
       return {
         name: "docusaurus-tailwindcss",
