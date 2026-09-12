@@ -1,8 +1,12 @@
 ---
 sidebar_position: 7
+lastTouchedBy: claude-code
+lastTouchedAt: "2026-09-12T11:42:24Z"
 ---
 
 # Contribution guide
+
+How to propose changes, report issues, and get a pull request merged into Servable.
 
 ![logo](/img/icon.svg)
 

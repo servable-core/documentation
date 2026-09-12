@@ -90,6 +90,90 @@
       "timestamp": "2026-09-12T11:00:08Z",
       "action": "modified",
       "summary": "Linked the two new guides (local-development, debugging-boot-failures) into the related-guides list."
+    },
+    {
+      "file": "docs/reference/commands/protocol.mdx",
+      "timestamp": "2026-09-12T11:14:00Z",
+      "action": "modified",
+      "summary": "Fixed a broken relative link (../protocol/index) caught by a real yarn build; Docusaurus does not generate that route for an index.mdx file. Corrected to ../protocol/."
+    },
+    {
+      "file": "docusaurus.config.js",
+      "timestamp": "2026-09-12T11:20:00Z",
+      "action": "modified",
+      "summary": "Added docusaurus-plugin-llms, the Docusaurus equivalent of the fumadocs llms.txt/llms-full.txt routes already used in web/support. Verified with a real local build since the plugin declares a peer dependency on Docusaurus 3.x while this site runs 2.4.3."
+    },
+    {
+      "file": "docs/overview.mdx",
+      "timestamp": "2026-09-12T11:42:24Z",
+      "action": "modified",
+      "summary": "Restructured so the actual pitch leads instead of the experimental warning; named the Parse Server dependency and the single-implemented-engine reality up front instead of only in the FAQ; linked to the new comparison page."
+    },
+    {
+      "file": "README.md",
+      "timestamp": "2026-09-12T11:42:24Z",
+      "action": "modified",
+      "summary": "Same restructuring as docs/overview.mdx: pitch before the experimental warning, and corrected a stale reference to 'generator-servable' (the actual orchestrator is @servable/server)."
+    },
+    {
+      "file": "docs/concepts/comparison.mdx",
+      "timestamp": "2026-09-12T11:42:24Z",
+      "action": "created",
+      "summary": "New page: Servable vs Express, Fastify, NestJS, and plain Parse Server, including a comparison table and honest guidance on when one of the alternatives is the better starting point. Requested after auditing the site's LLM-discovery messaging and finding no comparison content existed anywhere."
+    },
+    {
+      "file": "docs/concepts/philosophy.mdx",
+      "timestamp": "2026-09-12T11:42:24Z",
+      "action": "modified",
+      "summary": "Added a real one-line summary before the logo image (its first line was previously just the image, producing a meaningless llms.txt description) and a forward link to the new comparison page."
+    },
+    {
+      "file": "docs/concepts/protocols.mdx",
+      "timestamp": "2026-09-12T11:42:24Z",
+      "action": "modified",
+      "summary": "Rewrote the opening paragraph; the original first line (bold-italic text plus a raw <br /> tag) produced a garbled llms.txt description, flagged by the docusaurus-plugin-llms build warning."
+    },
+    {
+      "file": "docs/concepts/components.mdx",
+      "timestamp": "2026-09-12T11:42:24Z",
+      "action": "modified",
+      "summary": "Added a real intro sentence; the page's first content was a JSX component with no text, also flagged by the build warning."
+    },
+    {
+      "file": "docs/faq.md",
+      "timestamp": "2026-09-12T11:42:24Z",
+      "action": "modified",
+      "summary": "Added a one-line description before the logo image, and a frontmatter block (previously had none)."
+    },
+    {
+      "file": "docs/codeofconduct.md",
+      "timestamp": "2026-09-12T11:42:24Z",
+      "action": "modified",
+      "summary": "Added a one-line description before the logo image so its llms.txt entry is a real sentence."
+    },
+    {
+      "file": "docs/sponsorship.mdx",
+      "timestamp": "2026-09-12T11:42:24Z",
+      "action": "modified",
+      "summary": "Added a one-line description before the logo image so its llms.txt entry is a real sentence."
+    },
+    {
+      "file": "docs/contributing.md",
+      "timestamp": "2026-09-12T11:42:24Z",
+      "action": "modified",
+      "summary": "Added a one-line description before the logo image so its llms.txt entry is a real sentence."
+    },
+    {
+      "file": "docs/reference/overview.mdx",
+      "timestamp": "2026-09-12T11:42:24Z",
+      "action": "modified",
+      "summary": "Moved the experimental-warning admonition below the real intro paragraph; it was the actual first content, leaking into this page's llms.txt description as the literal string ':::info'."
+    },
+    {
+      "file": "docs/tutorials/parseserverapp/overview.md",
+      "timestamp": "2026-09-12T11:42:24Z",
+      "action": "modified",
+      "summary": "Same fix as docs/reference/overview.mdx (admonition leaking into the llms.txt description), plus updated the pitch to name Parse Server directly instead of the vaguer 'framework engine of choice', matching the corrected framing in docs/overview.mdx."
     }
   ]
 }

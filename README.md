@@ -1,23 +1,22 @@
 # Servable Documentation
 
-> [!WARNING]
-> Servable is still experimental and its api may change in the future.
+**Servable** is a protocol-oriented Node.js backend framework built on Parse Server. It streamlines server development by separating every reusable capability into a protocol, organically extracted from the base code and publishable as its own package, so Servable enforces a clear separation of concerns pattern out of the box instead of leaving it to discipline.
 
-Servable documentation source code for [https://docs.servable.app](https://docs.servable.app)
+This repo is the documentation source for [https://docs.servable.app](https://docs.servable.app).
+
+> [!WARNING]
+> Servable is still experimental and its API may change in the future.
 
 ![logo](/static/img/polar-bear-4.png)
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![JavaScript Style Guide](https://img.shields.io/badge/code_style-standard-brightgreen.svg)](https://standardjs.com)
 
+At its core, Servable is a server orchestrator (`@servable/server`) that computes a schema from every protocol applied to your models, then wires their lifecycle (schema, seed, config, routes, triggers, jobs, services) on top of a framework engine, currently Parse Server.
 
-**Servable** is a Node JS framework built on top of Express JS and Parse Server and tailored for protocols. It provides a concise, easy to use and scalable template to get the best of Parse Server and protocols.
-
-Servable at its core is a server template that uses the generator-servable to orchestrate the different protocols used in an application. Servable streamlines the server development by separating every "groupable" logic to be a protocol, so that it is organically extracted from the base code and possibly migrated into its own package. By doing so, Servable enforces a clear separation of concerns pattern out of the box.
-
-Main protocols:
+Highlights:
 - Quick start and Plug & Play Node JS framework
-- Tailored for protocols
+- Reusable, composable, publishable protocols instead of scattered controllers/services
 - Schema based models and auto-migration
 - Templates for models
 - Templates for custom protocols

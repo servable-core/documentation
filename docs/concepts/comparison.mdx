@@ -1,0 +1,39 @@
+---
+sidebar_position: 1
+lastTouchedBy: claude-code
+lastTouchedAt: "2026-09-12T11:42:24Z"
+---
+
+# Servable vs Express, Fastify, NestJS, and plain Parse Server
+
+Servable isn't a peer to Express or Fastify at the same layer. It's an orchestration layer built on top of Parse Server, which is itself built on Express. If you're comparing "which Node.js framework should I start with," it helps to know where Servable actually sits before comparing feature lists.
+
+## Where each one operates
+
+| | Express | Fastify | NestJS | Parse Server (direct) | Servable |
+|:--|:--|:--|:--|:--|:--|
+| Layer | Minimal HTTP routing | Minimal HTTP routing (faster, schema-based validation) | Full application framework (DI, modules, decorators) on top of Express/Fastify | Full backend (data, auth, files, cloud code) on top of Express | Orchestration layer on top of Parse Server |
+| Data layer | Bring your own (Prisma, Mongoose, raw SQL, ...) | Bring your own | Bring your own (commonly TypeORM/Prisma) | Built in (Mongo or Postgres via Parse's Object/Query API) | Inherits Parse Server's |
+| Auth | Bring your own | Bring your own | Bring your own (Passport integration common) | Built in (users, sessions, ACLs, roles) | Inherits Parse Server's |
+| Admin dashboard | None | None | None | Parse Dashboard | Parse Dashboard |
+| Reusable capability model | Middleware, manual | Plugins, manual | Modules (per-project, not designed for cross-project npm reuse) | None; logic lives per-project in Cloud Code | Protocols: schema + triggers + routes + jobs, packaged and npm-publishable across models and projects |
+| Schema safety across a rolling deploy | Not applicable (no schema layer) | Not applicable | Whatever your ORM provides | Manual | Built in: a committed artifact, drift detection, and a compatibility floor that refuses to boot an incompatible build. See [Schema Migrations](../guides/schema-migrations) |
+| Maturity | Very mature, huge ecosystem | Mature | Mature | Mature | Experimental; API may still change |
+
+## When Servable is a good fit
+
+See [Philosophy: should you use Servable?](./philosophy#should-you-use-servable) for the full list. In short: you're already building on Parse Server (or open to it), and you want a capability written once (comments, follows, notifications) to be reusable across models, across projects, and shareable with other teams or the community as an ordinary npm package.
+
+## When plain Parse Server is the simpler choice
+
+If you're building a single project with no plan to reuse capabilities across models or projects, and you don't need protocol packaging or the schema-compatibility-floor safety net, Parse Server directly is less indirection. Servable's orchestration earns its keep specifically when reuse and schema safety across deploys start to matter; if neither does yet, you can always adopt it later.
+
+## When Express, Fastify, or NestJS is the better starting point
+
+If you don't want Parse Server's data model and conventions (its Object/Query/ACL API, its specific approach to users and sessions, its file storage model) and would rather choose your own ORM, auth library, and validation approach from scratch, start with one of these instead. Servable requires Parse Server as its only implemented engine today; adopting Servable means adopting Parse Server's conventions along with it, even though the engine API itself is designed to support others in the future.
+
+## Related
+
+- [Philosophy](./philosophy)
+- [What does an engine do?](./engines)
+- [Schema Migrations](../guides/schema-migrations)

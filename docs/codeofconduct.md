@@ -1,8 +1,12 @@
 ---
 sidebar_position: 7
+lastTouchedBy: claude-code
+lastTouchedAt: "2026-09-12T11:42:24Z"
 ---
 
 # Code of conduct
+
+The standards Servable's community, contributors, and maintainers hold each other to.
 
 ![logo](/img/icon.svg)
 
