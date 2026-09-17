@@ -78,9 +78,9 @@ In Servable, many routes/functions are registered by protocols during startup li
 3. Confirm database connectivity and engine configuration.
 
 ### Explanation
-The health endpoint reflects startup state. A 500 usually means initialization failed in an earlier phase (configuration, schema, migration, or engine launch).
+The health endpoint reflects startup state. A 500 usually means initialization failed in an earlier phase (configuration, schema, or engine launch).
 
-## 5. Schema or migration failure after model changes
+## 5. Schema failure after model changes
 
 ### Situation
 App fails right after adding or modifying model/protocol schema.
@@ -92,7 +92,11 @@ App fails right after adding or modifying model/protocol schema.
 3. Run in a staging or local environment first when changing schema-affecting behavior.
 
 ### Explanation
-Servable computes and validates target schema at startup. Invalid schema contributions or incompatible changes will stop boot to avoid inconsistent runtime state.
+Servable computes and validates target schema at startup, then checks it against the committed
+`servable.schema.json` artifact — drift (sources changed without rebuilding it) and compatibility
+floor (an old build after something was deliberately removed elsewhere) both stop boot rather
+than run against an inconsistent schema. See [Schema Migrations](../guides/schema-migrations) for
+the exact failure messages and what to do about each.
 
 ## Need more details?
 

@@ -8,7 +8,7 @@ lastTouchedAt: "2026-09-12T11:42:24Z"
 
 **Servable** is a protocol-oriented Node.js backend framework built on Parse Server. Instead of scattering a capability like comments, follows, or notifications across controllers and models, you write it once as a protocol and attach it to any class that needs it, reusable across models, across projects, and publishable as its own npm package for other teams to use unmodified.
 
-Servable orchestrates the different protocols applied to your models and runs them on a framework engine (currently Parse Server, the only engine implemented today, even though the engine API itself is designed to support others). It does not handle any database or expose any API on its own; that's the engine's job. What Servable adds on top is schema computation from every protocol's declarations, a safe migration path (see [Schema Migrations](./guides/schema-migrations)), and lifecycle wiring (seeding, config, routes, jobs, triggers) so a well-built Servable project ends up being mostly your actual models and business logic.
+Servable orchestrates the different protocols applied to your models and runs them on a framework engine (currently Parse Server, the only engine implemented today, even though the engine API itself is designed to support others). It does not handle any database or expose any API on its own; that's the engine's job. What Servable adds on top is schema computation from every protocol's declarations, a safe schema-evolution path — a committed artifact, drift detection, and a compatibility floor that refuses to boot an incompatible build, not versioned migration files (see [Schema Migrations](./guides/schema-migrations)) — and lifecycle wiring (seeding, config, routes, jobs, triggers) so a well-built Servable project ends up being mostly your actual models and business logic.
 
 :::info
 Servable is still experimental and its API may change in the future.
@@ -20,7 +20,7 @@ Highlights:
 - Quick start and Plug & Play Node JS framework
 - Reusable, composable, publishable protocols instead of scattered controllers/services
 - Community protocols
-- Schema based models and auto-migration
+- Schema based models, applied additively at every boot
 - Highly extensible
 
 New to Servable, or comparing it against Express, Fastify, NestJS, or plain Parse Server? See

@@ -282,6 +282,102 @@
       "timestamp": "2026-09-12T11:52:43Z",
       "action": "modified",
       "summary": "Restored a missing 'import React from react' that a parallel content edit (commit 2fec608) had accidentally dropped, which broke the entire site's SSR build (ReferenceError: React is not defined on the homepage). Found because a full local build is run before every push in this session; fixed since it blocked deploying everything else in this round."
+    },
+    {
+      "file": "docs/reference/auth.mdx",
+      "timestamp": "2026-09-13T13:46:22Z",
+      "action": "updated",
+      "summary": "Documented device binding on the session-token path (AUTH_LEGACY_SESSION_DEVICE_BINDING) alongside the refresh path, scoped honestly what binding covers, made explicit that the session-token fallback runs even when access tokens are configured, and added which refresh failures clear the cookie plus the concurrent-refresh behaviour where both callers succeed but only one token survives."
+    },
+    {
+      "file": "docs/concepts/anatomy.mdx",
+      "timestamp": "2026-09-16T22:57:39Z",
+      "action": "modified",
+      "summary": "Removed the 'Utils database' component (was listed Mandatory) - the separate utils MongoDB it described is gone; schema/seed/config bookkeeping now lives in the engine's own database via a state store, not a dedicated instance."
+    },
+    {
+      "file": "docs/concepts/orchestration.md",
+      "timestamp": "2026-09-16T22:57:39Z",
+      "action": "updated",
+      "summary": "Replaced 'checks if a schema migration is necessary, migrates or not' with the real unischema mechanism (drift + compatibility-floor check, additive apply, no versioned migration step)."
+    },
+    {
+      "file": "docs/reference/lifecycle.mdx",
+      "timestamp": "2026-09-16T22:57:39Z",
+      "action": "updated",
+      "summary": "Fixed the boot sequence step and debugging-flow step that still described a migration/no-migration branch; both now describe the schema compatibility check (drift + floor)."
+    },
+    {
+      "file": "docs/gettingstarted/troubleshooting.mdx",
+      "timestamp": "2026-09-16T22:57:39Z",
+      "action": "updated",
+      "summary": "Dropped 'migration' from the health-endpoint explanation and renamed/expanded the schema-failure section to name the actual drift/compatibility-floor failure modes, linking to Schema Migrations."
+    },
+    {
+      "file": "docs/concepts/components.mdx",
+      "timestamp": "2026-09-16T22:57:39Z",
+      "action": "updated",
+      "summary": "Replaced 'calls for a database migration if needed' with the real drift/compatibility-floor/additive-apply description of what the Servable server does at boot."
+    },
+    {
+      "file": "docs/overview.mdx",
+      "timestamp": "2026-09-16T22:57:39Z",
+      "action": "updated",
+      "summary": "Reworded the 'safe migration path' description (now: committed artifact, drift detection, compatibility floor) and the 'auto-migration' feature bullet (now: applied additively at every boot)."
+    },
+    {
+      "file": "docs/faq.md",
+      "timestamp": "2026-09-16T22:57:39Z",
+      "action": "updated",
+      "summary": "Replaced the 'Schema migration' reason bullet (why JSON-based schema storage) with 'Schema safety across a rolling deploy (drift detection, a compatibility floor)'."
+    },
+    {
+      "file": "docs/reference/engine/overview.mdx",
+      "timestamp": "2026-09-16T22:57:39Z",
+      "action": "updated",
+      "summary": "Fixed 'Launch runtime and migration paths' (no more migration path) and added the engine's state-store responsibility (schema floor + seed/config bookkeeping, replacing the separate utils database)."
+    },
+    {
+      "file": "docs/guides/deployment/kubernetes.mdx",
+      "timestamp": "2026-09-16T22:57:39Z",
+      "action": "updated",
+      "summary": "Fixed a post-deploy readiness bullet: 'no migration errors' -> 'no drift or compatibility-floor errors'."
+    },
+    {
+      "file": "docs/tutorials/example.mdx",
+      "timestamp": "2026-09-16T22:57:39Z",
+      "action": "updated",
+      "summary": "Reworded 'predict schema and handle migrations automatically' to name the real mechanism (additive apply, checked against a committed artifact for drift and a compatibility floor)."
+    },
+    {
+      "file": "docs/tutorials/parseserverapp/overview.md",
+      "timestamp": "2026-09-16T22:57:39Z",
+      "action": "updated",
+      "summary": "Replaced the 'Schema based models and auto-migration' feature bullet with 'applied additively at every boot'."
+    },
+    {
+      "file": "docs/tutorials/parseserverapp/2.md",
+      "timestamp": "2026-09-16T22:57:39Z",
+      "action": "updated",
+      "summary": "Fixed the boot-sequence step ('migration steps' -> drift/floor check + additive apply) and the production-rollout tip ('rollback plan for migration failures' -> deprecate-then-contract guidance)."
+    },
+    {
+      "file": "docs/reference/config-adaptation.mdx",
+      "timestamp": "2026-09-16T22:57:39Z",
+      "action": "updated",
+      "summary": "Removed the 'distribution' and 'utilsDatabaseURI' normalization this page documented - both were removed from lib/adaptConfig/basic.js when the separate utils database was decommissioned; noted the engine now resolves its own database URI for its state store instead."
+    },
+    {
+      "file": "docs/reference/protocol/seed.md",
+      "timestamp": "2026-09-16T22:57:39Z",
+      "action": "updated",
+      "summary": "Corrected where auto-seed's completion state is tracked: the engine's own database via its state store, not a persisted mongoose 'SeedState' record in a separate utils database (the record shape/hash-skip logic itself is unchanged)."
+    },
+    {
+      "file": "docs/guides/schema-migrations.mdx",
+      "timestamp": "2026-09-16T22:57:39Z",
+      "action": "updated",
+      "summary": "Added a paragraph explaining where the compatibility floor is actually recorded now: the engine's own state store (plain collections in its own database), not a dedicated utils database - and that the update is a single atomic operation, never a read-then-write."
     }
   ]
 }

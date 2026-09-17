@@ -1,7 +1,7 @@
 ---
 sidebar_position: 2
 lastTouchedBy: claude-code
-lastTouchedAt: "2026-09-12T11:00:08Z"
+lastTouchedAt: "2026-09-16T22:57:39Z"
 ---
 
 # Schema Migrations
@@ -51,6 +51,14 @@ checks, either of which stops boot outright:
 If `servable.schema.json` doesn't exist at all, boot refuses immediately with an explicit error.
 Every deploy is expected to have one committed; there's no fallback to "just build whatever the
 current code produces."
+
+The "recorded floor" the compatibility check compares against isn't a separate database - the
+engine keeps it (alongside seed/config bookkeeping) as plain collections in its own database via
+a small state store (`engine.createStateStore()`). There used to be a dedicated "utils" database
+just for this; it's gone, on the theory that a single point of failure that exists purely to
+coordinate migrations shouldn't need its own database once there's nothing left to coordinate. The
+floor update itself is a single atomic operation - never a read-then-write - so it can't regress
+even with several pods on different builds booting at once.
 
 ## Common failure signals
 

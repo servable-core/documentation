@@ -18,7 +18,7 @@ This page summarizes the observable startup lifecycle executed by Servable serve
 6. Launch system phase.
 7. Re-adapt config with system payload.
 8. Create HTTP server via engine.
-9. Start server runtime (migration/no-migration path).
+9. Start server runtime — schema compatibility check (drift + compatibility floor), then apply additively. One path, not a migration/no-migration branch.
 10. Run before-init phase.
 11. Register classes.
 12. Launch live server.
@@ -41,7 +41,7 @@ This page summarizes the observable startup lifecycle executed by Servable serve
 If startup fails:
 
 1. Check schema validation output first.
-2. Check engine startup/migration errors.
+2. Check engine startup and schema compatibility errors (drift/floor — see [Schema Migrations](../guides/schema-migrations)).
 3. Check wiring logs for routes/jobs/functions registration.
 4. Check seed/config failures.
 5. Query health endpoint after restart.

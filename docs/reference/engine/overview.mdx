@@ -1,5 +1,7 @@
 ---
 sidebar_position: 1
+lastTouchedBy: claude-code
+lastTouchedAt: "2026-09-16T22:57:39Z"
 ---
 
 # Engine Overview
@@ -13,7 +15,8 @@ Servable computes schema and lifecycle flow; the engine executes concrete operat
 - Create and configure application server instances.
 - Expose object and query APIs.
 - Register cloud functions, routes, and jobs.
-- Launch runtime and migration paths.
+- Launch the runtime and apply the target schema additively.
+- Implement the state store the orchestrator uses for its own boot bookkeeping (schema compatibility floor, seed/config records) — kept in the engine's own database, not a separate one.
 - Provide framework-native adapters used during wiring.
 
 ## Parse engine shape in this repository

@@ -32,7 +32,7 @@ We encourage developers to package their protocols and share them with the commu
 ### Why can't I modify the schema with the Servable Dashboard?
 The Servable Dashboard allows us to change the app schema by default. Although this behaviour is handy for local projects and its quick of use, we chose to use a strictly JSON based schema storage and update for these reasons:
 - Schema computation
-- Schema migration
+- Schema safety across a rolling deploy (drift detection, a compatibility floor)
 - Make the security more visible and mistakes more obvious
 - Versioning
 

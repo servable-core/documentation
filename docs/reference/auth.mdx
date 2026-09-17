@@ -1,7 +1,7 @@
 ---
 sidebar_position: 11
 lastTouchedBy: claude-code
-lastTouchedAt: "2026-09-12T11:52:43Z"
+lastTouchedAt: "2026-09-13T13:45:49Z"
 ---
 
 # Authentication: sessions, cookies, and refresh tokens
@@ -25,7 +25,8 @@ AUTH_JWT_SECRET=<openssl rand -hex 32>
 AUTH_ACCESS_TOKEN_TTL_SECONDS=3600            # default: 1 hour
 AUTH_REFRESH_TOKEN_TTL_SECONDS=2592000        # default: 30 days
 AUTH_REFRESH_TOKEN_TTL_REMEMBER_ME_SECONDS=7776000  # default: 90 days
-AUTH_DEVICE_BINDING_ENABLED=1                 # default on; '0' disables
+AUTH_DEVICE_BINDING_ENABLED=1                 # default on; '0' disables (refresh path)
+AUTH_LEGACY_SESSION_DEVICE_BINDING=1          # default on; '0' disables (session-token path)
 AUTH_STEP_UP_FRESHNESS_SECONDS=300            # default: 5 minutes
 ```
 
@@ -42,6 +43,13 @@ AUTH_STEP_UP_FRESHNESS_SECONDS=300            # default: 5 minutes
 2. **The `x-servable-session-token` value** - from a custom header, then `req.cookies`, then a raw
    `Cookie` header parse, in that priority order. Looked up against `_Session` (must be
    non-expired), same as any Parse app.
+
+Note that step 2 is **not** conditional on `AUTH_JWT_SECRET` being unset. The session-token path
+runs whenever a request simply arrives without a valid Bearer token, including on a deployment that
+has fully opted into access tokens. That is what keeps server-rendered pages working, since they
+cannot see a token the browser holds in memory, but it also means the session cookie remains an
+accepted credential in its own right: rotation and reuse detection apply only to traffic that
+actually goes through the refresh endpoint.
 
 Either path stamps `user._authSessionId` (transient, request-scoped, never persisted) with the
 `_Session` id that authenticated the request - this is what lets `requireStepUp` check freshness
@@ -78,14 +86,60 @@ refresh token in the same operation**:
   both the old and new token work.
 - **Device binding** (`AUTH_DEVICE_BINDING_ENABLED`, on by default): if the caller sends
   `installationId` and the session has one bound already, they must match or the refresh is
-  rejected (`401`, "bound to a different device"). This only enforces when *both* sides are
-  present - a session or request missing an installation id fails open rather than locking out a
-  legitimate user over incomplete data. It's real defense-in-depth (a leaked refresh token alone
-  isn't enough without the matching device cookie too), not equivalent to hardware-backed device
-  attestation - a full XSS compromise can read both values.
+  rejected (`401`, "bound to a different device"). See Device binding below for what this does and
+  does not cover, and for the matching switch on the session-token path.
 - Failure modes are explicit thrown objects with real HTTP codes: `501` if
   `AUTH_JWT_SECRET` isn't configured at all, `401` for no token / invalid token / expired token /
   device mismatch.
+
+### Which failures clear the cookie
+
+A rejected refresh clears the `refresh_token` cookie for the two failures that can never reverse
+themselves: an **expired** token, and a **device mismatch**. Leaving those in place only guarantees
+that the client repeats the same doomed call on every later page load.
+
+An **invalid** token, meaning one whose hash matches no session, deliberately does **not** clear it.
+That is also exactly what the losing side of a concurrent rotation sees, and clearing there would
+let it delete the winner's perfectly good fresh cookie.
+
+### Concurrent refreshes
+
+Two refreshes issued at the same moment with the same valid token both succeed, each returning its
+own new token. The stored hash is last write wins, so only one of them stays usable and the other
+caller is left holding a token that is already dead without knowing it. Rotation assumes a client
+that refreshes serially, which is why the official client de-duplicates concurrent callers. Anything
+that can refresh from several places at once, server-rendered pages included, needs the same
+de-duplication or it will invalidate its own credentials.
+
+Replay is detected but not acted upon: the replayed call simply fails. Nothing revokes the rest of
+the session family and nothing raises an alert, so layer your own response on top if you need theft
+to be visible rather than merely unsuccessful.
+
+## Device binding
+
+When enabled, the `installationId` a `_Session` was minted under is compared against the caller's
+`x-servable-installation-id` header. It is checked on both authentication paths, each with its own
+switch:
+
+- `AUTH_DEVICE_BINDING_ENABLED` covers the refresh endpoint. A mismatch clears the refresh cookie
+  and returns 401.
+- `AUTH_LEGACY_SESSION_DEVICE_BINDING` covers the session-token path in `userResolver`. A mismatch
+  resolves no user, which a `requireUser` route reports as 209.
+
+Both **fail open** when either side is missing, so callers that never send the header (server to
+server integrations, older sessions minted before the field existed) keep working unchanged.
+
+They are separate switches because the consequences are not comparable. A rejection on the refresh
+path is a failed refresh that the session cookie then covers for; a rejection on the session path
+signs the caller out immediately. Enabling the second one also invalidates existing sessions whose
+stored `installationId` no longer matches what their client now sends, so expect some users to be
+signed out once on rollout, and keep `AUTH_LEGACY_SESSION_DEVICE_BINDING=0` as the rollback.
+
+Scope it honestly. The device identifier travels as an ordinary cookie in the same jar as the
+refresh token, so any compromise that yields one yields the other: cookie jar theft, a machine in
+the middle, a fully compromised browser. What binding genuinely covers is a refresh token that
+leaked **on its own**, for example a copy forwarded upstream as a header that ends up in a proxy's
+logs. Treat it as narrowing one leak path, not as device attestation.
 
 ## Step-up authentication
 

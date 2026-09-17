@@ -1,7 +1,7 @@
 ---
 sidebar_position: 3
 lastTouchedBy: claude-code
-lastTouchedAt: "2026-09-12T11:52:43Z"
+lastTouchedAt: "2026-09-16T22:57:39Z"
 ---
 
 # Seed
@@ -19,11 +19,13 @@ Set per protocol or per class (`protocol.loader.seedMode()` / `classSeedMode({ c
   write it into the function yourself (the idempotent `CREATE TABLE IF NOT EXISTS`-style pattern
   used by several protocols' own bootstrap functions is exactly this).
 - **Auto**: declarative - you provide `{ data, transformer, validator, uniqueRef }` and the seed
-  system tracks completion for you in the utils database, so it does not re-run once successful.
+  system tracks completion for you (in the engine's own database, via its state store - see
+  [Schema Migrations](../../guides/schema-migrations) for the state store this shares with the
+  schema compatibility floor), so it does not re-run once successful.
 
 ## How auto-seed decides whether to re-run
 
-Every auto-seed candidate gets a persisted `SeedState` record (`Initial` → `Loading` →
+Every auto-seed candidate gets a persisted boot-state record (`Initial` → `Loading` →
 `LoadedSuccessfully` | `ErrorLoading`), keyed by the protocol or class id. On each boot, the seed
 system computes a hash of:
 
@@ -61,9 +63,9 @@ If startup succeeds but expected records are missing:
 1. Check startup logs for the seed phase (`Launch > Seed > Start` / `> End`).
 2. Confirm the protocol/class actually declares a seed mode - a candidate with no seed
    declaration produces nothing, silently.
-3. For auto-seed, check the persisted `SeedState` for that id; an `ErrorLoading` state means a
-   previous attempt threw and needs investigating directly rather than assuming a fresh retry will
-   just work.
+3. For auto-seed, check the persisted boot-state record for that id (in the engine's state
+   store); an `ErrorLoading` state means a previous attempt threw and needs investigating directly
+   rather than assuming a fresh retry will just work.
 
 ## Related
 

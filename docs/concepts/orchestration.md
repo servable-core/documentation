@@ -1,5 +1,7 @@
 ---
 sidebar_position: 5
+lastTouchedBy: claude-code
+lastTouchedAt: "2026-09-16T22:57:39Z"
 ---
 
 # How Servable server orchestrates a service?
@@ -20,7 +22,7 @@ When the server is launched, the servable-engine performs the following tasks:
 
 - Launches an Express app
 - Computes the target database schema by aggregating the custom app tables and the protocols applied to those tables
-- Checks if a schema migration is necessary. It migrates the schema or not accordingly
+- Checks the schema is safe to apply — a committed artifact's hash must match what the current sources produce (drift), and this build's compatibility floor must not be lower than what's already recorded — then applies it additively. There is no versioned migration step; see [Schema Migrations](../guides/schema-migrations)
 - Binds every protocol to the events triggered by the tables that use them
 - Exposes every protocol custom function
 - Registers jobs

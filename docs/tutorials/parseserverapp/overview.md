@@ -19,7 +19,7 @@ Servable is still experimental and its API may change in the future.
 Highlights:
 - Quick start and Plug & Play Node JS framework
 - Tailored for protocols
-- Schema based models and auto-migration
+- Schema based models, applied additively at every boot
 
 ## Protocols
 Servable streamlines the server development by separating every "groupable" logic to be a protocol, so that it is organically extracted from the base code and possibly migrated into its own package. By doing so, Servable enforces a clear separation of concerns pattern out of the box. 
