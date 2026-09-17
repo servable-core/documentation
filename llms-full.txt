@@ -160,10 +160,6 @@ The mongodb or PostGreSQL database
 *Mandatory*
 An S3 like bucket server for storing files
 
-#### Utils database
-An utilitary database used by the arbiter to store migration status and current instances
-*Mandatory*
-
 #### Redis cache 
 Optional
 
@@ -220,7 +216,7 @@ import Definitions from '@site/src/components/project/definitions/actual'
 Servable is built from three moving pieces: the server (the orchestrator), protocols (reusable units of backend capacity), and a framework engine (the adapter to the underlying runtime, currently Parse Server). The glossary and manifest below define every term used across this documentation.
 
 #### Servable server
-The Servable server acts as a central orchestrator and mediator. It computes the target schema, calls for a database migration if needed, loads protocols, registers seeding, configuration, routes, jobs, etc.
+The Servable server acts as a central orchestrator and mediator. It computes the target schema, checks it's safe to boot (drift + compatibility floor against a committed artifact — see [Schema Migrations](../guides/schema-migrations)) and applies it additively, loads protocols, registers seeding, configuration, routes, jobs, etc.
 
 #### Protocols
 Servable streamlines the server development by separating every "groupable" logic to be a protocol, so that it is organically extracted from the base code and possibly migrated into its own package. By doing so, Servable enforces a clear separation of concerns pattern out of the box. 
@@ -307,7 +303,7 @@ When the server is launched, the servable-engine performs the following tasks:
 
 - Launches an Express app
 - Computes the target database schema by aggregating the custom app tables and the protocols applied to those tables
-- Checks if a schema migration is necessary. It migrates the schema or not accordingly
+- Checks the schema is safe to apply — a committed artifact's hash must match what the current sources produce (drift), and this build's compatibility floor must not be lower than what's already recorded — then applies it additively. There is no versioned migration step; see [Schema Migrations](../guides/schema-migrations)
 - Binds every protocol to the events triggered by the tables that use them
 - Exposes every protocol custom function
 - Registers jobs
@@ -622,7 +618,7 @@ We encourage developers to package their protocols and share them with the commu
 #### Why can't I modify the schema with the Servable Dashboard?
 The Servable Dashboard allows us to change the app schema by default. Although this behaviour is handy for local projects and its quick of use, we chose to use a strictly JSON based schema storage and update for these reasons:
 - Schema computation
-- Schema migration
+- Schema safety across a rolling deploy (drift detection, a compatibility floor)
 - Make the security more visible and mistakes more obvious
 - Versioning
 
@@ -790,9 +786,9 @@ In Servable, many routes/functions are registered by protocols during startup li
 3. Confirm database connectivity and engine configuration.
 
 #### Explanation
-The health endpoint reflects startup state. A 500 usually means initialization failed in an earlier phase (configuration, schema, migration, or engine launch).
+The health endpoint reflects startup state. A 500 usually means initialization failed in an earlier phase (configuration, schema, or engine launch).
 
-### 5. Schema or migration failure after model changes
+### 5. Schema failure after model changes
 
 #### Situation
 App fails right after adding or modifying model/protocol schema.
@@ -804,7 +800,11 @@ App fails right after adding or modifying model/protocol schema.
 3. Run in a staging or local environment first when changing schema-affecting behavior.
 
 #### Explanation
-Servable computes and validates target schema at startup. Invalid schema contributions or incompatible changes will stop boot to avoid inconsistent runtime state.
+Servable computes and validates target schema at startup, then checks it against the committed
+`servable.schema.json` artifact — drift (sources changed without rebuilding it) and compatibility
+floor (an old build after something was deliberately removed elsewhere) both stop boot rather
+than run against an inconsistent schema. See [Schema Migrations](../guides/schema-migrations) for
+the exact failure messages and what to do about each.
 
 ### Need more details?
 
@@ -917,7 +917,7 @@ After deployment, verify:
 
 - Pods become ready.
 - `/health-check` returns success.
-- Schema/startup logs show no migration errors.
+- Schema/startup logs show no drift or compatibility-floor errors.
 
 ### Operational tips
 
@@ -1406,6 +1406,14 @@ If `servable.schema.json` doesn't exist at all, boot refuses immediately with an
 Every deploy is expected to have one committed; there's no fallback to "just build whatever the
 current code produces."
 
+The "recorded floor" the compatibility check compares against isn't a separate database - the
+engine keeps it (alongside seed/config bookkeeping) as plain collections in its own database via
+a small state store (`engine.createStateStore()`). There used to be a dedicated "utils" database
+just for this; it's gone, on the theory that a single point of failure that exists purely to
+coordinate migrations shouldn't need its own database once there's nothing left to coordinate. The
+floor update itself is a single atomic operation - never a read-then-write - so it can't regress
+even with several pods on different builds booting at once.
+
 ### Common failure signals
 
 - **"No servable.schema.json found"**: nobody ran `servable schema build`/`apply` on this
@@ -1675,7 +1683,7 @@ Servable is still experimental and its api may change in the future.
 
 **Servable** is a protocol-oriented Node.js backend framework built on Parse Server. Instead of scattering a capability like comments, follows, or notifications across controllers and models, you write it once as a protocol and attach it to any class that needs it, reusable across models, across projects, and publishable as its own npm package for other teams to use unmodified.
 
-Servable orchestrates the different protocols applied to your models and runs them on a framework engine (currently Parse Server, the only engine implemented today, even though the engine API itself is designed to support others). It does not handle any database or expose any API on its own; that's the engine's job. What Servable adds on top is schema computation from every protocol's declarations, a safe migration path (see [Schema Migrations](./guides/schema-migrations)), and lifecycle wiring (seeding, config, routes, jobs, triggers) so a well-built Servable project ends up being mostly your actual models and business logic.
+Servable orchestrates the different protocols applied to your models and runs them on a framework engine (currently Parse Server, the only engine implemented today, even though the engine API itself is designed to support others). It does not handle any database or expose any API on its own; that's the engine's job. What Servable adds on top is schema computation from every protocol's declarations, a safe schema-evolution path — a committed artifact, drift detection, and a compatibility floor that refuses to boot an incompatible build, not versioned migration files (see [Schema Migrations](./guides/schema-migrations)) — and lifecycle wiring (seeding, config, routes, jobs, triggers) so a well-built Servable project ends up being mostly your actual models and business logic.
 
 :::info
 Servable is still experimental and its API may change in the future.
@@ -1687,7 +1695,7 @@ Highlights:
 - Quick start and Plug & Play Node JS framework
 - Reusable, composable, publishable protocols instead of scattered controllers/services
 - Community protocols
-- Schema based models and auto-migration
+- Schema based models, applied additively at every boot
 - Highly extensible
 
 New to Servable, or comparing it against Express, Fastify, NestJS, or plain Parse Server? See
@@ -1779,7 +1787,8 @@ AUTH_JWT_SECRET=<openssl rand -hex 32>
 AUTH_ACCESS_TOKEN_TTL_SECONDS=3600            # default: 1 hour
 AUTH_REFRESH_TOKEN_TTL_SECONDS=2592000        # default: 30 days
 AUTH_REFRESH_TOKEN_TTL_REMEMBER_ME_SECONDS=7776000  # default: 90 days
-AUTH_DEVICE_BINDING_ENABLED=1                 # default on; '0' disables
+AUTH_DEVICE_BINDING_ENABLED=1                 # default on; '0' disables (refresh path)
+AUTH_LEGACY_SESSION_DEVICE_BINDING=1          # default on; '0' disables (session-token path)
 AUTH_STEP_UP_FRESHNESS_SECONDS=300            # default: 5 minutes
 ```
 
@@ -1796,6 +1805,13 @@ AUTH_STEP_UP_FRESHNESS_SECONDS=300            # default: 5 minutes
 2. **The `x-servable-session-token` value** - from a custom header, then `req.cookies`, then a raw
    `Cookie` header parse, in that priority order. Looked up against `_Session` (must be
    non-expired), same as any Parse app.
+
+Note that step 2 is **not** conditional on `AUTH_JWT_SECRET` being unset. The session-token path
+runs whenever a request simply arrives without a valid Bearer token, including on a deployment that
+has fully opted into access tokens. That is what keeps server-rendered pages working, since they
+cannot see a token the browser holds in memory, but it also means the session cookie remains an
+accepted credential in its own right: rotation and reuse detection apply only to traffic that
+actually goes through the refresh endpoint.
 
 Either path stamps `user._authSessionId` (transient, request-scoped, never persisted) with the
 `_Session` id that authenticated the request - this is what lets `requireStepUp` check freshness
@@ -1832,14 +1848,60 @@ refresh token in the same operation**:
   both the old and new token work.
 - **Device binding** (`AUTH_DEVICE_BINDING_ENABLED`, on by default): if the caller sends
   `installationId` and the session has one bound already, they must match or the refresh is
-  rejected (`401`, "bound to a different device"). This only enforces when *both* sides are
-  present - a session or request missing an installation id fails open rather than locking out a
-  legitimate user over incomplete data. It's real defense-in-depth (a leaked refresh token alone
-  isn't enough without the matching device cookie too), not equivalent to hardware-backed device
-  attestation - a full XSS compromise can read both values.
+  rejected (`401`, "bound to a different device"). See Device binding below for what this does and
+  does not cover, and for the matching switch on the session-token path.
 - Failure modes are explicit thrown objects with real HTTP codes: `501` if
   `AUTH_JWT_SECRET` isn't configured at all, `401` for no token / invalid token / expired token /
   device mismatch.
+
+#### Which failures clear the cookie
+
+A rejected refresh clears the `refresh_token` cookie for the two failures that can never reverse
+themselves: an **expired** token, and a **device mismatch**. Leaving those in place only guarantees
+that the client repeats the same doomed call on every later page load.
+
+An **invalid** token, meaning one whose hash matches no session, deliberately does **not** clear it.
+That is also exactly what the losing side of a concurrent rotation sees, and clearing there would
+let it delete the winner's perfectly good fresh cookie.
+
+#### Concurrent refreshes
+
+Two refreshes issued at the same moment with the same valid token both succeed, each returning its
+own new token. The stored hash is last write wins, so only one of them stays usable and the other
+caller is left holding a token that is already dead without knowing it. Rotation assumes a client
+that refreshes serially, which is why the official client de-duplicates concurrent callers. Anything
+that can refresh from several places at once, server-rendered pages included, needs the same
+de-duplication or it will invalidate its own credentials.
+
+Replay is detected but not acted upon: the replayed call simply fails. Nothing revokes the rest of
+the session family and nothing raises an alert, so layer your own response on top if you need theft
+to be visible rather than merely unsuccessful.
+
+### Device binding
+
+When enabled, the `installationId` a `_Session` was minted under is compared against the caller's
+`x-servable-installation-id` header. It is checked on both authentication paths, each with its own
+switch:
+
+- `AUTH_DEVICE_BINDING_ENABLED` covers the refresh endpoint. A mismatch clears the refresh cookie
+  and returns 401.
+- `AUTH_LEGACY_SESSION_DEVICE_BINDING` covers the session-token path in `userResolver`. A mismatch
+  resolves no user, which a `requireUser` route reports as 209.
+
+Both **fail open** when either side is missing, so callers that never send the header (server to
+server integrations, older sessions minted before the field existed) keep working unchanged.
+
+They are separate switches because the consequences are not comparable. A rejection on the refresh
+path is a failed refresh that the session cookie then covers for; a rejection on the session path
+signs the caller out immediately. Enabling the second one also invalidates existing sessions whose
+stored `installationId` no longer matches what their client now sends, so expect some users to be
+signed out once on rollout, and keep `AUTH_LEGACY_SESSION_DEVICE_BINDING=0` as the rollback.
+
+Scope it honestly. The device identifier travels as an ordinary cookie in the same jar as the
+refresh token, so any compromise that yields one yields the other: cookie jar theft, a machine in
+the middle, a fully compromised browser. What binding genuinely covers is a refresh token that
+leaked **on its own**, for example a copy forwarded upstream as a header that ends up in a proxy's
+logs. Treat it as narrowing one leak path, not as device attestation.
 
 ### Step-up authentication
 
@@ -2290,7 +2352,6 @@ to the live payload.
 The basic adaptation layer (first call only) sets defaults for:
 
 - `dryRun` behavior and matcher function.
-- `distribution` settings.
 - `system.docker`, per-key, not "is the whole object missing": setting only
   `system.docker.namespace` (see [protocol system](./protocol/system)) must not silently drop the
   `enabled`/`environments` defaults just because the caller already provided *a* `system.docker`
@@ -2300,15 +2361,15 @@ The basic adaptation layer (first call only) sets defaults for:
 - runtime `envs` values (server host/port/url, keys, verbosity, cache URIs), each via `envOr(process.env.X, default)`,
   so an explicitly-set env var always wins over the hardcoded default.
 
-`utilsDatabaseURI` specifically uses `envOr(servableConfig.envs["utilsDatabaseURI"],
-process.env.SERVABLE_UTILS_DATABASE_URI)` rather than an unconditional assignment, preserving
-whatever's already in `servableConfig.envs` over the raw env var, the same preserve-if-set pattern
-used for `databaseURI` in the engine's own `setConfigurations`. This matters because
-`servableConfig.envs.utilsDatabaseURI` can already hold the correct, dynamically-detected value by
-the time anything reads it back out.
+Note what's *not* here any more: there is no `distribution` or `utilsDatabaseURI` handling in
+this layer (removed with the separate utils database — see
+[Schema Migrations](../guides/schema-migrations) and [Seed](./protocol/seed)). The engine resolves
+its own database URI directly (preferring `servableConfig.envs.databaseURI`, the same
+preserve-if-set pattern this layer still uses for its other `envs` values, over the raw env var)
+when it builds its state store — there's no separate URI for this file to default.
 
-It also marks `servableConfig.adaptedBasic = true` on completion, which is what makes the second
-call's `basic()` invocation a no-op.
+`basic()` marks `servableConfig.adaptedBasic = true` on completion, which is what makes the second
+call's invocation a no-op.
 
 ### Engine hook
 
@@ -2380,7 +2441,8 @@ Servable computes schema and lifecycle flow; the engine executes concrete operat
 - Create and configure application server instances.
 - Expose object and query APIs.
 - Register cloud functions, routes, and jobs.
-- Launch runtime and migration paths.
+- Launch the runtime and apply the target schema additively.
+- Implement the state store the orchestrator uses for its own boot bookkeeping (schema compatibility floor, seed/config records) — kept in the engine's own database, not a separate one.
 - Provide framework-native adapters used during wiring.
 
 ### Parse engine shape in this repository
@@ -2463,7 +2525,7 @@ This page summarizes the observable startup lifecycle executed by Servable serve
 6. Launch system phase.
 7. Re-adapt config with system payload.
 8. Create HTTP server via engine.
-9. Start server runtime (migration/no-migration path).
+9. Start server runtime — schema compatibility check (drift + compatibility floor), then apply additively. One path, not a migration/no-migration branch.
 10. Run before-init phase.
 11. Register classes.
 12. Launch live server.
@@ -2486,7 +2548,7 @@ This page summarizes the observable startup lifecycle executed by Servable serve
 If startup fails:
 
 1. Check schema validation output first.
-2. Check engine startup/migration errors.
+2. Check engine startup and schema compatibility errors (drift/floor — see [Schema Migrations](../guides/schema-migrations)).
 3. Check wiring logs for routes/jobs/functions registration.
 4. Check seed/config failures.
 5. Query health endpoint after restart.
@@ -3275,11 +3337,13 @@ Set per protocol or per class (`protocol.loader.seedMode()` / `classSeedMode({ c
   write it into the function yourself (the idempotent `CREATE TABLE IF NOT EXISTS`-style pattern
   used by several protocols' own bootstrap functions is exactly this).
 - **Auto**: declarative - you provide `{ data, transformer, validator, uniqueRef }` and the seed
-  system tracks completion for you in the utils database, so it does not re-run once successful.
+  system tracks completion for you (in the engine's own database, via its state store - see
+  [Schema Migrations](../../guides/schema-migrations) for the state store this shares with the
+  schema compatibility floor), so it does not re-run once successful.
 
 ### How auto-seed decides whether to re-run
 
-Every auto-seed candidate gets a persisted `SeedState` record (`Initial` → `Loading` →
+Every auto-seed candidate gets a persisted boot-state record (`Initial` → `Loading` →
 `LoadedSuccessfully` | `ErrorLoading`), keyed by the protocol or class id. On each boot, the seed
 system computes a hash of:
 
@@ -3317,9 +3381,9 @@ If startup succeeds but expected records are missing:
 1. Check startup logs for the seed phase (`Launch > Seed > Start` / `> End`).
 2. Confirm the protocol/class actually declares a seed mode - a candidate with no seed
    declaration produces nothing, silently.
-3. For auto-seed, check the persisted `SeedState` for that id; an `ErrorLoading` state means a
-   previous attempt threw and needs investigating directly rather than assuming a fresh retry will
-   just work.
+3. For auto-seed, check the persisted boot-state record for that id (in the engine's state
+   store); an `ErrorLoading` state means a previous attempt threw and needs investigating directly
+   rather than assuming a fresh retry will just work.
 
 ### Related
 
@@ -4557,7 +4621,7 @@ You can now open the Servable dashboard at [http://localhost:4040](http://localh
 
 :::info
 Note that contrarily to Parse Server Dashboard, Servable Dashboard does not permit class creation and modification via the UI. 
-This is to enforce the unique ability of Servable to predict schema and handle migrations automatically, thus avoiding environment discrepancies.
+This is to enforce the unique ability of Servable to predict schema and apply it additively at every boot, checked against a committed artifact for drift and a compatibility floor, thus avoiding environment discrepancies.
 The sole source of truth is the protocols designated schema files.
 :::
 
@@ -4656,7 +4720,7 @@ Set environment variables for runtime-sensitive settings, including:
 On restart, check logs for:
 
 1. Configuration resolution.
-2. Schema validation and migration steps.
+2. Schema validation, then the drift/compatibility-floor check, then an additive schema apply.
 3. Route/job/service registration.
 4. Health endpoint registration.
 
@@ -4670,7 +4734,7 @@ On restart, check logs for:
 
 1. Validate configuration in staging first.
 2. Roll out schema-sensitive changes gradually.
-3. Keep rollback plan ready for migration failures.
+3. Deprecate before removing (`schema.json`'s `deprecated: true`, then `servable schema contract` in a later release) so a rolling deploy never drops a field out from under an older pod.
 
 ### Next
 
@@ -4694,7 +4758,7 @@ Servable is still experimental and its API may change in the future.
 Highlights:
 - Quick start and Plug & Play Node JS framework
 - Tailored for protocols
-- Schema based models and auto-migration
+- Schema based models, applied additively at every boot
 
 ### Protocols
 Servable streamlines the server development by separating every "groupable" logic to be a protocol, so that it is organically extracted from the base code and possibly migrated into its own package. By doing so, Servable enforces a clear separation of concerns pattern out of the box. 
