@@ -1,31 +1,75 @@
 ---
 sidebar_position: 2
+lastTouchedBy: claude-code
+lastTouchedAt: "2026-09-18T07:28:12Z"
 ---
 
 # Object
 
-Object APIs represent model-level runtime operations implemented by the selected engine.
+`Servable.App.Object` is the engine's model-construction API. In the Parse engine it's
+`Parse.Object` itself, wrapped in a `Proxy` (see `register/object/index.js`) that resolves the
+registered subclass when you construct by class name:
 
-## Typical capabilities
+```js
+new Servable.App.Object('Publication')      // -> the registered Publication subclass,
+                                             //    protocol mixins included
+new Parse.Object('Publication')             // -> a plain, un-mixed ParseObject
+```
 
-- Create, update, delete, and serialize model instances.
-- Register lifecycle hooks on model events.
-- Access model metadata and class names.
+`Parse.Object`'s own constructor doesn't consult the subclass registry, so before this wrapper
+existed, callers constructing by class name had to re-fetch the object to get protocol methods on
+it - an extra round trip that also threw away in-memory state for a freshly-read copy. Every
+static Parse.Object method (`extend`, `registerSubclass`, `saveAll`/`destroyAll`, `fromJSON`, ...)
+is forwarded unchanged; only construction is intercepted, and `x instanceof Servable.App.Object`
+still holds for subclass instances.
 
-## End-user expectation
+## Typed, validated construction
 
-Protocols relying on object behavior assume these operations exist and are consistent at runtime.
+`new Servable.App.Object(className)` accepts any string - a typo'd class name is silently
+accepted, and even a correct one doesn't narrow `.get()`/`.set()` to that class's real fields.
+`Servable.App.Typed.object(className)` is an opt-in alternative that does both:
 
-If your app depends on a protocol using object hooks, verify engine support before rollout.
+```js
+const reaction = Servable.App.Typed.object('Reaction')
+reaction.get('content')              // typed to Reaction's real field shape
+reaction.get('thisFieldDoesNotExist') // flagged at edit/typecheck time
+Servable.App.Typed.object('_Reaction') // flagged too - not a real class name
+```
+
+It constructs the exact same instance `new Servable.App.Object(className)` would (same
+subclass-resolving proxy) - only the *type* differs, sharpened per-app by generated types (see
+below). This is a separate surface rather than a change to `Object` itself: a real survey of one
+app's own code found roughly 235 call sites (dominated by `new Servable.App.Query(this.className)`
+inside every subclass's own `class.js`) that pass a computed, non-literal class name, and
+TypeScript's overload resolution has no way to keep those working *and* reject a bad literal at
+the same time - a fallback loose enough not to break them is also loose enough to accept a typo
+silently. `Object`/`Query` are therefore untouched; `Typed` is additive.
+
+To get `ServableClassMap` (the map `Typed` validates against) populated for your app, run:
+
+```bash
+servable schema types
+```
+
+See [`servable schema` reference](../commands/schema#generate-typescript-types) and the
+[editor autocomplete guide](../../guides/editor-autocomplete) for the full setup (wiring
+`jsconfig.json`, what gets generated, and how it stays in sync).
+
+`Servable.App.Object` remains the normal, default way to construct - `Typed` is a situational
+tool, not a replacement to reach for by habit. It's most worth it in code that's genuinely
+error-prone to get right by inspection alone: a one-off script, an unfamiliar class you're
+touching for the first time, or a migration where a wrong class name would be costly to discover
+later. Reaching for it on every construction everywhere else just adds a second, more verbose way
+to write the same thing for no real gain.
 
 ## Best practices
 
 1. Keep object-level logic in models or protocols, not ad hoc route handlers.
-2. Use protocol methods for reusable behavior.
-3. Validate side effects in before/after hooks.
+2. Validate side effects in before/after hooks, not at the call site.
 
 ## Related
 
 - [Engine query API](./query)
 - [Protocol class reference](../protocol/class)
-
+- [`@servable/tools` reference](../tools)
+- [Editor autocomplete guide](../../guides/editor-autocomplete)

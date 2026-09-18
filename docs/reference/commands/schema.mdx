@@ -1,7 +1,7 @@
 ---
 sidebar_position: 3
 lastTouchedBy: claude-code
-lastTouchedAt: "2026-09-12T11:00:08Z"
+lastTouchedAt: "2026-09-18T07:11:29Z"
 ---
 
 # $ servable schema
@@ -94,6 +94,49 @@ Running this bumps `compatibilityFloor` by one. Any pod built against an older s
 to boot rather than run against a database it doesn't know is missing fields it expects. See
 [Schema Migrations](../../guides/schema-migrations) for how that check works at launch.
 
+## Generate TypeScript types
+
+Two separate commands turn what's already been built/committed into `.d.ts` files - real editor
+autocomplete and type-checking for a plain-JS app, no TypeScript conversion required. Neither
+touches a database; both are meant to be run (and their output committed) the same way
+`schema build` is.
+
+### From the committed schema artifact
+
+```bash
+servable schema types
+```
+
+Reads the **committed** `servable.schema.json` (not a fresh build - same "local files only"
+contract as `plan`/`apply`) and writes `servable.schema.types.d.ts`: one TypeScript interface per
+class, one field per property, so `object.get('caption')`/`.set('caption', value)` gets real
+autocomplete and a typo'd field name is flagged. Run `schema build` first if the artifact is out
+of date - `schema plan --ci` catches that regardless.
+
+This also merges every class into `ServableClassMap`, which is what powers
+`Servable.App.Typed.object(className)`/`.query(className)` - see the
+[Object](../engine/object#typed-validated-construction) and
+[Query](../engine/query#typed-validated-construction) reference pages.
+
+### From live protocol files
+
+```bash
+servable schema protocol-types
+```
+
+Unlike `schema types`, this reads **live** `services/`/`jobs/` files directly (there's no
+committed artifact for these - nothing at runtime needs a precomputed list of them) and writes
+`servable.protocols.types.d.ts`. It sharpens `Servable.Services.call({ id, params })` so a real
+service's `id` autocompletes and its `params` are checked against that service's real handler
+signature; a misspelled `id` is flagged at edit time instead of failing at request time with
+`Could not find designated service`. Jobs are listed per-protocol for discoverability only -
+nothing invokes a job by id, so there's no call site to sharpen.
+
+Re-run this whenever a protocol adds, removes, or renames a service or job.
+
+See the [editor autocomplete guide](../../guides/editor-autocomplete) for how to wire both
+generated files into a plain-JS app's `jsconfig.json`.
+
 ## Typical workflow
 
 1. Change a protocol's `schema.json` (add a field, or mark one `deprecated: true`).
@@ -106,4 +149,6 @@ to boot rather than run against a database it doesn't know is missing fields it 
 ## Related
 
 - [Schema Migrations guide](../../guides/schema-migrations)
+- [Editor autocomplete guide](../../guides/editor-autocomplete)
 - [Reference: protocol schema](../protocol/schema)
+- [`@servable/tools` reference](../tools)

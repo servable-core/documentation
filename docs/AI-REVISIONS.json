@@ -378,6 +378,66 @@
       "timestamp": "2026-09-16T22:57:39Z",
       "action": "updated",
       "summary": "Added a paragraph explaining where the compatibility floor is actually recorded now: the engine's own state store (plain collections in its own database), not a dedicated utils database - and that the update is a single atomic operation, never a read-then-write."
+    },
+    {
+      "file": "docs/guides/editor-autocomplete.mdx",
+      "timestamp": "2026-09-18T07:11:29Z",
+      "action": "created",
+      "summary": "New guide for the 'lucide' DX initiative: jsconfig.json wiring (including the exclude-shadows-include gotcha with the two global.d.ts files), servable schema types/protocol-types, why Object/Query themselves stay untyped for class names but Servable.App.Typed doesn't, Servable.Services.call() narrowing, defineConfig(), and the ESLint 9 upgrade across all four @servable/* packages."
+    },
+    {
+      "file": "docs/guides/overview.mdx",
+      "timestamp": "2026-09-18T07:11:29Z",
+      "action": "updated",
+      "summary": "Added a link to the new editor-autocomplete guide in the related-guides list."
+    },
+    {
+      "file": "docs/reference/commands/schema.mdx",
+      "timestamp": "2026-09-18T07:11:29Z",
+      "action": "updated",
+      "summary": "Added 'Generate TypeScript types' section documenting the two new commands (schema types, schema protocol-types) - what each reads (committed artifact vs live protocol files), what each writes, and why they're separate rather than one command."
+    },
+    {
+      "file": "docs/reference/tools.mdx",
+      "timestamp": "2026-09-18T07:11:29Z",
+      "action": "updated",
+      "summary": "Added the four new exports (generateSchemaTypes, buildProtocolResources, generateProtocolResourceTypes, defineConfig) to the import example and added 'TypeScript types'/'Config authoring' sections documenting each - including why buildProtocolResources is deliberately not part of buildSchema()/servable.schema.json itself."
+    },
+    {
+      "file": "docs/reference/engine/object.mdx",
+      "timestamp": "2026-09-18T07:11:29Z",
+      "action": "updated",
+      "summary": "Replaced generic tool-agnostic placeholder content with the real Object contract: the subclass-resolving Proxy behavior, and a new 'Typed, validated construction' section for Servable.App.Typed.object() explaining why it's a separate opt-in surface (a real survey found ~235 real call sites using a computed class name that a strict Object/Query signature would have broken)."
+    },
+    {
+      "file": "docs/reference/engine/query.mdx",
+      "timestamp": "2026-09-18T07:11:29Z",
+      "action": "updated",
+      "summary": "Replaced generic tool-agnostic placeholder content with the real Query contract: useMasterKey defaulted on reads, the or()/and()/nor() plain-Parse.Query caveat, and a new 'Typed, validated construction' section for Servable.App.Typed.query()."
+    },
+    {
+      "file": "docs/reference/protocol/service.md",
+      "timestamp": "2026-09-18T07:11:29Z",
+      "action": "updated",
+      "summary": "Replaced generic tool-agnostic placeholder content with the real service file shape ({ id, handler } default export), the real Servable.Services.call({ id, version, params }) contract (object-arg, returns an Error rather than throwing when not found), and a new section on servable schema protocol-types sharpening id/params."
+    },
+    {
+      "file": "docs/reference/engine/object.mdx",
+      "timestamp": "2026-09-18T07:28:12Z",
+      "action": "updated",
+      "summary": "Corrected the 'Best practices' framing after user feedback: the previous wording ('Prefer Servable.App.Typed.object() over the bare constructor whenever...') read as a default habit to adopt, adding verbosity to everyday code for no real gain. Reframed Typed as a situational tool (one-off scripts, unfamiliar classes, migrations) with Object staying the normal default."
+    },
+    {
+      "file": "docs/reference/engine/query.mdx",
+      "timestamp": "2026-09-18T07:28:12Z",
+      "action": "updated",
+      "summary": "Same correction as object.mdx's own entry - removed the 'prefer Typed' best-practice bullet and reframed it as situational rather than default, fixing the resulting list numbering gap."
+    },
+    {
+      "file": "docs/guides/editor-autocomplete.mdx",
+      "timestamp": "2026-09-18T07:28:12Z",
+      "action": "updated",
+      "summary": "Same correction: 'use it wherever you're typing a literal class name by hand' reframed as situational (a one-off script, an unfamiliar class, a migration) rather than a habit for every construction."
     }
   ]
 }

@@ -1,7 +1,7 @@
 ---
 sidebar_position: 9
 lastTouchedBy: claude-code
-lastTouchedAt: "2026-09-12T11:52:43Z"
+lastTouchedAt: "2026-09-18T07:11:29Z"
 ---
 
 import BashTabs from '@site/src/components/generic/bashTabs'
@@ -20,9 +20,10 @@ import {
   buildSchema, validateSchema,
   compileArtifact, artifactHashOf, normalizeArtifact,
   plan,
+  generateSchemaTypes, buildProtocolResources, generateProtocolResourceTypes,
   extractProtocol, accessManifest, ManifestEnums, ManifestEnumsV1_1_0,
   documentProtocol, generateGithubReadme,
-  cleanProtocols,
+  cleanProtocols, defineConfig,
   Domain,
 } from '@servable/tools'
 ```
@@ -108,6 +109,83 @@ Diffs two artifacts (typically the committed one against a freshly compiled one)
 every class/field/index/permission change as safe or breaking. This is what `servable schema
 plan`/`apply`/`contract` are built on - see the [`servable schema` command reference](./commands/schema)
 for the full SAFE/BREAKING/pre-deprecated classification and the CLI workflow around it.
+
+## TypeScript types
+
+Pure codegen - no new modeling effort, no TypeScript conversion of the app itself. Both are what
+`servable schema types`/`servable schema protocol-types` are built on; see the
+[`servable schema` command reference](./commands/schema#generate-typescript-types) for the CLI
+workflow and the [editor autocomplete guide](../guides/editor-autocomplete) for wiring the output
+into a plain-JS app's `jsconfig.json`.
+
+### `generateSchemaTypes(artifact)`
+
+Takes a `servable.schema.json`-shaped artifact (anything with a `classes` array) and returns the
+full `.d.ts` file contents: one `export interface ClassName { field?: Type }` per class - every
+field optional, since Parse never enforces presence purely from schema - and a merge of every
+class into the ambient `ServableClassMap`, which is what `Servable.App.Typed.object()`/`.query()`
+validate class names against (see [Object](../reference/engine/object#typed-validated-construction)).
+A `Pointer`/`Relation` field narrows to its target class (`ServablePointer<Target>`) only when
+that class is also present in the same artifact; otherwise it falls back to a generic shape rather
+than referencing a type that wouldn't exist.
+
+### `buildProtocolResources({ protocols })`
+
+Takes the `protocols` array a `buildSchema()` result already contains and scans each protocol's
+live `services/`/`jobs/` directories (dynamically importing each file, the same way `class.js`
+files are already imported elsewhere in this pipeline), returning:
+
+```ts
+{
+  [protocolId]: {
+    services: [{ id, path, /* cron for jobs only */ }],
+    jobs: [{ id, path, cron }],
+  }
+}
+```
+
+Deliberately **not** part of `buildSchema()`/`servable.schema.json` itself - nothing at runtime
+needs a precomputed list of a protocol's services or jobs (they register themselves live into
+`Servable.Services` at boot), so there's no reason to couple this scan to `buildSchema()`'s own
+boot-critical path, which already has a known performance finding of its own. Routes and Parse
+Cloud functions are deliberately out of scope for now: no live protocol in practice has a
+`routes/` directory yet, and `functions/`/`cloudCode` files use a structurally different export
+shape (every named export becomes its own `Parse.Cloud.define()`-registered function, rather than
+one `{ id, handler }` default export).
+
+### `generateProtocolResourceTypes(resources)`
+
+Turns a `buildProtocolResources()` result into a `.d.ts` that merges every discovered service into
+`ServableServiceCallMap`, keyed by its real `id`, as `typeof import(realPath)['default']` - never
+a serialized copy of the handler's signature, so the generated type can't drift from the live
+file. This is what sharpens `Servable.Services.call({ id, params })` per real service; see
+[Protocol reference: Service](./protocol/service) for the runtime contract this is typing.
+Jobs are emitted as a plain per-protocol listing (nothing invokes a job by id, so there's no call
+site to sharpen - only discoverability).
+
+## Config authoring
+
+### `defineConfig(config)`
+
+Identity function - returns `config` unchanged. Its only job is giving `servable.config.js`
+authors real editor autocomplete on every config section (`docker`, `system`, `cors`, `parse`,
+...) via JSDoc typedefs, the same way `defineConfig` helpers work in other JS ecosystem tools:
+
+```js
+import { defineConfig } from '@servable/tools'
+
+export default defineConfig({
+  id: 'my-app',
+  system: {
+    docker: {
+      namespace: 'my-worktree-name',
+    },
+  },
+})
+```
+
+A typo like `evns` instead of `envs` is flagged at edit time instead of silently producing a
+missing config value discovered at boot.
 
 ## Manifest
 

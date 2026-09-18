@@ -1,32 +1,71 @@
 ---
 sidebar_position: 2
+lastTouchedBy: claude-code
+lastTouchedAt: "2026-09-18T07:28:12Z"
 ---
 
 # Query
 
-Query APIs provide read-time filtering, sorting, pagination, and relation loading.
+`Servable.App.Query` is the engine's read API. In the Parse engine it's a `Parse.Query` subclass
+(see `register/query/index.js`) whose read methods - `find`, `first`, `get`, `count`, `each`,
+`eachBatch`, `map`, `reduce`, `filter` - default `useMasterKey: true`. Protocols and routes run
+server-side with the app's own master key rather than a user session, so nearly every real read
+site needs `useMasterKey: true` anyway; this default means you only have to override it when you
+actually want ACL-restricted results:
 
-## Typical capabilities
+```js
+new Servable.App.Query('Publication').find()                       // useMasterKey: true by default
+new Servable.App.Query('Publication').find({ useMasterKey: false }) // explicit override
+```
 
-- Filter by field/value and relation constraints.
-- Pagination and sorting.
-- Field selection and include behavior.
-- Secure execution options when required.
+Writes (`Servable.App.Object`'s `save`/`destroy`) still need `useMasterKey` passed explicitly -
+this default only applies to reads. `distinct()`/`aggregate()` already force `useMasterKey: true`
+internally in Parse.Query itself and aren't overridden here; `subscribe()` (LiveQuery)
+authenticates via session token, not master key, and is also left alone.
 
-## End-user expectation
+:::caution
+Parse's own `Query.or()`/`.and()`/`.nor()` hard-code `new ParseQuery(className)` internally rather
+than `new this(...)`, so composing a query with them silently returns a **plain** `Parse.Query` -
+opting the result back out of the `useMasterKey` default above. Nothing errors; the composed query
+just quietly returns ACL-filtered results. `Servable.App.Query` overrides all three (using
+`new this(...)`) specifically so a composed query stays a `Servable.App.Query`.
+:::
 
-Protocols and routes often compose query builders to retrieve data efficiently.
+## Typed, validated construction
 
-Use query constraints consistently across handlers to avoid drift between endpoints.
+Like `Servable.App.Object`, `new Servable.App.Query(className)` accepts any string with no
+validation. `Servable.App.Typed.query(className)` requires a real, known class name and narrows
+every read/filter method to that class's real fields:
+
+```js
+const q = Servable.App.Typed.query('Reaction')
+q.equalTo('contextId', someId)          // typed to Reaction's real fields
+q.equalTo('wrongKey', someId)           // flagged at edit/typecheck time
+const items = await q.find()
+items[0].get('content')                 // narrowed on the results too
+```
+
+See [Object's own reference](./object#typed-validated-construction) for why this is a separate,
+opt-in surface rather than a change to `Query` itself (the short version: this codebase's own
+`new Servable.App.Query(this.className)` pattern, present in every subclass's `class.js`, passes a
+computed class name that can't be validated at compile time - keeping `Query` itself permissive
+avoids breaking that pattern).
+
+`Servable.App.Query` remains the normal, default way to query - `Typed` is a situational tool for
+code that's genuinely error-prone to get right by inspection alone (a one-off script, an
+unfamiliar class, a migration), not something to reach for on every query out of habit.
 
 ## Best practices
 
-1. Keep reusable query logic in protocol helpers/services.
-2. Limit selected fields for performance-sensitive endpoints.
-3. Validate user-provided filters before execution.
+1. Keep reusable query logic in protocol helpers/services, not duplicated per route.
+2. Limit selected fields (`.select(...)`) for performance-sensitive endpoints.
+3. Validate user-provided filters before executing them - `useMasterKey: true` by default means a
+   query here already bypasses ACLs; an unvalidated user-supplied filter is a real access-control
+   risk, not just a correctness one.
 
 ## Related
 
 - [Engine object API](./object)
-- [Guides add route](../../guides/routes/add)
-
+- [`@servable/tools` reference](../tools)
+- [Editor autocomplete guide](../../guides/editor-autocomplete)
+- [Guides: add a route](../../guides/routes/add)
