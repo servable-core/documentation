@@ -1,0 +1,74 @@
+---
+sidebar_position: 12
+lastTouchedBy: claude-code
+lastTouchedAt: "2026-09-18T07:11:29Z"
+---
+
+# Services
+
+`Servable.Services` is the runtime registry that lets one protocol expose reusable behavior other
+protocols, routes, or jobs call by id, without importing that protocol's files directly. It's the
+sanctioned way to cross a protocol boundary at runtime - see
+[Protocol reference: Service](./protocol/service) for how a protocol *authors* one; this page is
+the calling/registration contract itself.
+
+## The contract
+
+```js
+class Intercom {
+  async register({ service, protocol }) { /* ... */ }
+  async call({ id, version, params }) { /* ... */ }
+}
+```
+
+Both methods take a **single object argument**, not `(id, ...args)`.
+
+### `register({ service, protocol })`
+
+Called once per service, at boot, by `wireSchema` - not something protocol/app code calls
+directly. `service` is a `services/*.js` file's whole default export (`{ id, handler, version? }`);
+`protocol` is the resolved protocol instance the service belongs to. If a service with the same
+`id`+`version` (default `1.0.0`) is already registered, the call is a no-op - the first
+registration wins, silently. If the service object itself declares a `register(props)` method,
+it's called once here with `{ protocol }`, before the service becomes callable.
+
+### `call({ id, version, params })`
+
+What protocol/route/job code actually calls:
+
+```js
+const result = await Servable.Services.call({
+  id: '@my-scope/myprotocol.checkAuth',
+  params: { token: 'xyz' },
+})
+```
+
+Looks the service up by `id`/`version` (defaulting to `1.0.0` if omitted) and invokes
+`handler({ params, protocol })` - `protocol` is threaded through from whatever was registered, a
+caller never supplies it. **If no service matches, `call()` returns an `Error` value - it does not
+throw.** Check the return value (`result instanceof Error`, or check a known success shape) rather
+than wrapping the call in try/catch if you need to distinguish "no such service" from a real
+handler failure that threw.
+
+## Real autocomplete on `id` and `params`
+
+By default, `id` accepts any string and `params` accepts any shape - a typo'd id or a wrong
+`params` field isn't caught until the call actually runs, and a lookup failure returns an `Error`
+value rather than an obvious stack trace. Run:
+
+```bash
+servable schema protocol-types
+```
+
+to generate `servable.protocols.types.d.ts`, which sharpens `Servable.Services.call()` so a real
+service's `id` autocompletes and `params` is checked against that service's real `handler`
+signature (inferred from the handler's own JSDoc, when it has any). See the
+[`servable schema` command reference](./commands/schema#generate-typescript-types) and the
+[editor autocomplete guide](../guides/editor-autocomplete) for the full setup.
+
+## Related
+
+- [Protocol reference: Service](./protocol/service)
+- [`@servable/tools` reference](./tools)
+- [Editor autocomplete guide](../guides/editor-autocomplete)
+- [Transactions](./transactions)

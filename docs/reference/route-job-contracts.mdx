@@ -1,7 +1,7 @@
 ---
 sidebar_position: 2
 lastTouchedBy: claude-code
-lastTouchedAt: "2026-09-12T11:00:08Z"
+lastTouchedAt: "2026-09-18T07:11:29Z"
 ---
 
 # Route and Job Contracts
@@ -37,20 +37,36 @@ This page summarizes the effective runtime contracts for protocol routes and job
 
 ## Job contract matrix
 
+Backed by [Agenda](https://github.com/agenda/agenda) (`@hokify/agenda`), MongoDB-persisted.
+
 | Field | Required | Meaning | Notes |
 |:--|:--|:--|:--|
-| `id` | Yes | Job identifier | Used as scheduler job name |
-| `handler` | Yes | Async job handler | Executed by scheduler worker |
-| `cron` | Yes (current adapter behavior) | Schedule expression | Passed to recurring scheduler setup |
+| `id` | Yes | Job identifier | Used as the scheduler job name |
+| `handler` | Yes | Async job handler | Executed by the scheduler worker |
+| `cron` | Yes (current adapter behavior) | Schedule expression | Passed straight through to Agenda |
 | `priority` | No | Job priority | Defaults to `high` |
 | `concurrency` | No | Concurrent executions | Defaults to `10` |
+| `defaultConcurrency` / `maxConcurrency` | No | Agenda-level concurrency tuning | Forwarded to Agenda unchanged |
+| `defaultLockLimit` / `lockLimit` / `defaultLockLifetime` | No | Agenda locking behavior | Forwarded to Agenda unchanged |
+| `processEvery` | No | Polling interval | Forwarded to Agenda unchanged |
+| `ensureIndex` / `sort` | No | Agenda job-collection tuning | Forwarded to Agenda unchanged |
+| `timeZone` | No | Cron timezone | Forwarded to Agenda unchanged |
 | `attributes` | No | Additional payload | Passed on scheduled invocation |
+| `onComplete` | No | Completion callback | Forwarded to Agenda unchanged |
+| `runOnInit` | No | Run immediately on registration | Defaults to `false` |
 
 ### Job behavior notes
 
 1. Jobs are registered through the engine job adapter.
-2. Scheduler storage depends on parse database URI configuration.
+2. Scheduler storage depends on the Parse database URI configuration.
 3. Jobs are started and scheduled during startup wiring.
+
+:::caution
+Each `Servable.App.Jobs.define()` call currently creates its **own** `Agenda` instance - its own
+MongoDB connection and its own polling loop - rather than sharing one per app. An app with several
+protocol jobs ends up with that many independent connections/polling loops doing overlapping work.
+Confirmed in `register/jobs/index.js`; tracked as a known issue, not yet fixed.
+:::
 
 ## Source of truth
 

@@ -1,7 +1,7 @@
 ---
 sidebar_position: 7
 lastTouchedBy: claude-code
-lastTouchedAt: "2026-09-12T11:49:28Z"
+lastTouchedAt: "2026-09-18T07:11:29Z"
 ---
 
 import BashTabs from '@site/src/components/generic/bashTabs'
@@ -31,6 +31,16 @@ generated documentation. See [`@servable/tools` reference](./tools) for the full
 The currently only implemented engine: the adapter that lets Servable orchestrate protocols on
 top of Parse Server, implementing Servable's engine API (Object, Query, Auth, Job, ...).
 <BashTabs npm={`npm install @servable/parse-server-engine`} />
+
+:::caution
+`@servable/tools` depends on `jimp@^1.x`; this package depends on `jimp@^0.16.x` (its own image
+middleware hasn't been migrated to jimp v1's API yet). Installing both together in the same app
+(a common combination - `@servable/cli`'s schema/protocol-types commands need `@servable/tools`)
+can hit intermittent install/build failures from Yarn hoisting the "wrong" major version, surfacing
+as `Named export 'JimpClassSchema' not found` from deep inside `@jimp/plugin-blit`. A clean
+reinstall (removing `node_modules/jimp` and `node_modules/@jimp`, then reinstalling) has resolved
+it in every occurrence seen so far. Tracked as a known issue, not yet fixed.
+:::
 
 ## [Servable CLI](https://github.com/servable-core/cli)
 

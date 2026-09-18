@@ -75,6 +75,7 @@ gets `id` validation, just not `params` narrowing). See the
 
 ## Related
 
+- [Services reference](../services) - the full registration/calling contract
 - [Routes](./routes)
 - [Jobs](./jobs)
 - [Lib](./lib)

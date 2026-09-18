@@ -438,6 +438,48 @@
       "timestamp": "2026-09-18T07:28:12Z",
       "action": "updated",
       "summary": "Same correction: 'use it wherever you're typing a literal class name by hand' reframed as situational (a one-off script, an unfamiliar class, a migration) rather than a habit for every construction."
+    },
+    {
+      "file": "docs/reference/services.mdx",
+      "timestamp": "2026-09-18T07:37:16Z",
+      "action": "created",
+      "summary": "New top-level, cross-cutting Services reference (register/call contract, the object-arg shape, call() returning an Error rather than throwing on a miss, servable schema protocol-types narrowing) - matches transactions.mdx/auth.mdx's placement pattern rather than being buried only in protocol/service.md's authoring-focused page."
+    },
+    {
+      "file": "docs/reference/protocol/routes.md",
+      "timestamp": "2026-09-18T07:37:16Z",
+      "action": "updated",
+      "summary": "Replaced generic placeholder content, including a fabricated `Servable.App.Route.Constants.Methods.GET` API that doesn't exist anywhere in the source (real usage is a lowercase string, method: 'get') - confirmed against register/route/index.js. Added the real routes/v<N>/**/*.js version-directory convention."
+    },
+    {
+      "file": "docs/reference/protocol/jobs.md",
+      "timestamp": "2026-09-18T07:37:16Z",
+      "action": "updated",
+      "summary": "Fixed a wrong field name (documented as `schedule`; the real field is `cron`, confirmed against register/jobs/index.js) and replaced generic placeholder content with the real Agenda-backed field set and directory conventions (jobs/ at protocol root, models/<name>/jobs/ per-class variant). Added the known one-Agenda-instance-per-job issue as a caution."
+    },
+    {
+      "file": "docs/reference/route-job-contracts.mdx",
+      "timestamp": "2026-09-18T07:37:16Z",
+      "action": "updated",
+      "summary": "Enriched the job contract matrix with the real full Agenda-forwarded field set (defaultConcurrency, processEvery, maxConcurrency, lockLimit family, ensureIndex, sort, timeZone, onComplete, runOnInit) that was previously reduced to just id/handler/cron/priority/concurrency/attributes. Added a caution about each job registration creating its own Agenda instance (own DB connection, own polling loop) rather than sharing one per app."
+    },
+    {
+      "file": "docs/reference/packages.mdx",
+      "timestamp": "2026-09-18T07:37:16Z",
+      "action": "updated",
+      "summary": "Added a caution under parse-server-engine documenting the real jimp version conflict with @servable/tools (^1.x vs ^0.16.x) that causes intermittent install/build failures - filed as PEAKUB-354, confirmed live in backend/main."
+    },
+    {
+      "file": "docs/reference/overview.mdx",
+      "timestamp": "2026-09-18T07:37:16Z",
+      "action": "updated",
+      "summary": "Added the new Services reference page to both the 'In this section' summary and 'Key reference entry points' list."
+    },
+    {
+      "file": "docs/faq.md",
+      "timestamp": "2026-09-18T07:37:16Z",
+      "action": "updated",
+      "summary": "Replaced a stale `yo servable:forkprotocol` command reference (a dead yeoman generator, no longer part of this codebase) with the real, current `servable protocol eject` workflow and a link to its command reference."
     }
   ]
 }

@@ -1,10 +1,13 @@
 ---
 sidebar_position: 3
+lastTouchedBy: claude-code
+lastTouchedAt: "2026-09-18T07:11:29Z"
 ---
 
 # Jobs
 
-Protocol jobs are background tasks registered during startup and executed by the runtime scheduler.
+Protocol jobs are background tasks registered during startup and run on an [Agenda](https://github.com/agenda/agenda)-backed
+scheduler (`@hokify/agenda`, MongoDB-persisted).
 
 ## When to use protocol jobs
 
@@ -15,14 +18,35 @@ Use jobs for work that should not block request/response flows:
 - Periodic analytics aggregation.
 - Data consistency tasks across models.
 
-## Job descriptor shape
+## Directory shape
 
-Typical job declarations include:
+One file per job under `jobs/` at the protocol root (nesting is allowed, e.g.
+`jobs/payout/finak/sendreminder.js`). A per-class variant also exists:
+`models/<className>/jobs/*.js` (v1.1.0 loader) / `classes/<className>/jobs_/*.js` (v1.0.0, note
+the trailing underscore).
 
-- `id`: unique protocol job identifier.
-- `schedule`: cron expression or interval.
-- `concurrency`: optional execution limit.
-- `handler`: async function executed by the scheduler.
+## Job descriptor
+
+```js
+export default {
+  __servableType: 'job',
+  id: 'sendReminder',      // required - the job's scheduler name
+  cron: '0 9 * * *',       // required (current adapter behavior)
+  handler: async () => { /* ... */ },
+}
+```
+
+Optional fields, all forwarded to Agenda: `priority` (default `'high'`), `concurrency` (default
+`10`), `defaultConcurrency`, `processEvery`, `maxConcurrency`, `defaultLockLimit`, `lockLimit`,
+`defaultLockLifetime`, `ensureIndex`, `sort`, `timeZone`, `attributes` (extra payload passed on
+scheduled invocation), `onComplete`, `runOnInit` (default `false`).
+
+:::caution
+Each `Servable.App.Jobs.define()` call currently creates its **own** `Agenda` instance - its own
+MongoDB connection and its own polling loop - rather than sharing one per app. For an app with
+several protocol jobs, this means several independent connections/polling loops doing overlapping
+work. Confirmed in `register/jobs/index.js`; tracked as a known issue, not yet fixed.
+:::
 
 ## Good practices
 

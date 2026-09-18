@@ -1,6 +1,6 @@
 ---
 lastTouchedBy: claude-code
-lastTouchedAt: "2026-09-12T11:42:24Z"
+lastTouchedAt: "2026-09-18T07:11:29Z"
 ---
 
 # FAQ
@@ -38,11 +38,13 @@ The Servable Dashboard allows us to change the app schema by default. Although t
 
 ### Can I modify a protocol
 Servable's api allows you to give parameters to a protocol.
-If these parameters are not enough for your use case, let's say you want to increase the security level of a protocol's class, you can fork an existing protocol onto the app's /protocols folder
+If these parameters are not enough for your use case, let's say you want to increase the security level of a protocol's class, you can eject an existing protocol into the app's own `/protocols` folder and modify it directly there:
 
 ```bash
-yo servable:forkprotocol
+servable protocol eject
 ```
+
+See the [`servable protocol` command reference](./reference/commands/protocol#eject-a-protocol-out-of-an-app) for the full workflow (it also works in the other direction: pulling a protocol currently living inside an app out to its own standalone package).
 
 ### How do I add an express middleware to my app?
 The *afterInit* method allows you manipulate the underlying express middleware when it has been initialized and ready. You can hook any middleware at this point.
